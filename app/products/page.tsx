@@ -16,7 +16,6 @@ import {
   DollarSign
 } from 'lucide-react';
 import { Product } from '@/lib/types';
-import { supabase } from '@/lib/supabase';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -30,54 +29,19 @@ export default function ProductsPage() {
 
   const fetchProducts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const response = await fetch('/api/products');
       
-      if (error) {
-        console.error('Error fetching products:', error);
-        // Fallback to mock data
-        setProducts([
-          {
-            id: '1',
-            name: 'Premium Wireless Headphones',
-            description: 'High-quality wireless headphones with noise cancellation',
-            sku: 'PWH-001',
-            cost_price: 45.00,
-            selling_price: 89.99,
-            stock_quantity: 100,
-            is_active: true,
-            created_at: '2024-01-15T10:00:00Z',
-            updated_at: '2024-01-15T10:00:00Z'
-          },
-          {
-            id: '2',
-            name: 'Smartphone Case',
-            description: 'Protective case for smartphones',
-            sku: 'SMC-001',
-            cost_price: 5.00,
-            selling_price: 19.99,
-            stock_quantity: 200,
-            is_active: true,
-            created_at: '2024-01-20T14:30:00Z',
-            updated_at: '2024-01-20T14:30:00Z'
-          },
-          {
-            id: '3',
-            name: 'Portable Charger',
-            description: '10000mAh portable battery pack',
-            sku: 'PCH-001',
-            cost_price: 15.00,
-            selling_price: 34.99,
-            stock_quantity: 5,
-            is_active: true,
-            created_at: '2024-01-22T11:20:00Z',
-            updated_at: '2024-01-22T11:20:00Z'
-          }
-        ]);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.error) {
+        console.error('Error fetching products:', result.error);
+        setProducts([]);
       } else {
-        setProducts(data || []);
+        setProducts(result.products || []);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -312,10 +276,10 @@ export default function ProductsPage() {
                       <div className="flex items-center space-x-4">
                         <div className="text-right">
                           <p className="text-sm font-medium text-gray-900">
-                            ${product.selling_price.toFixed(2)}
+                            Rs.{product.selling_price.toFixed(2)}
                           </p>
                           <p className="text-sm text-gray-500">
-                            Cost: ${product.cost_price.toFixed(2)}
+                            Cost: Rs.{product.cost_price.toFixed(2)}
                           </p>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -354,4 +318,4 @@ export default function ProductsPage() {
       </main>
     </div>
   );
-} 
+}

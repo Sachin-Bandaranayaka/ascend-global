@@ -14,7 +14,6 @@ import {
   Save
 } from 'lucide-react';
 import { Product, CreatePurchaseInvoiceForm } from '@/lib/types';
-import { supabase } from '@/lib/supabase';
 
 type PurchaseItemForm = {
   product_id: string;
@@ -49,44 +48,23 @@ export default function NewPurchaseOrderPage() {
 
   const fetchProducts = async () => {
     try {
-      const { data: productsData, error: productsError } = await supabase
-        .from('products')
-        .select('*')
-        .order('name');
+      const response = await fetch('/api/products');
       
-      if (productsError) {
-        console.error('Error fetching products:', productsError);
-        setProducts([
-          {
-            id: '1',
-            name: 'Premium Widget',
-            sku: 'PWG-001',
-            description: 'High-quality premium widget with advanced features',
-            cost_price: 45.00,
-            selling_price: 89.99,
-            stock_quantity: 150,
-            is_active: true,
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-15T10:30:00Z'
-          },
-          {
-            id: '2',
-            name: 'Standard Widget',
-            sku: 'SWG-002',
-            description: 'Reliable standard widget for everyday use',
-            cost_price: 25.00,
-            selling_price: 49.99,
-            stock_quantity: 200,
-            is_active: true,
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-10T14:20:00Z'
-          }
-        ]);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.error) {
+        console.error('Error fetching products:', result.error);
+        setProducts([]);
       } else {
-        setProducts(productsData || []);
+        setProducts(result.products || []);
       }
     } catch (error) {
       console.error('Error:', error);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -400,7 +378,7 @@ export default function NewPurchaseOrderPage() {
 
             <div className="mt-4 text-right">
               <div className="text-lg font-semibold text-gray-900">
-                Total: ${calculateTotal().toFixed(2)}
+                Total: Rs.{calculateTotal().toFixed(2)}
               </div>
             </div>
           </div>
@@ -437,7 +415,7 @@ export default function NewPurchaseOrderPage() {
               <div className="border-t pt-2">
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Total Amount:</span>
-                  <span>${calculateTotal().toFixed(2)}</span>
+                  <span>Rs.{calculateTotal().toFixed(2)}</span>
                 </div>
               </div>
             </div>

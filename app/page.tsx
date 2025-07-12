@@ -1,3 +1,5 @@
+'use client';
+
 import Link from "next/link";
 import { 
   ShoppingBag, 
@@ -10,38 +12,30 @@ import {
   Target,
   ShoppingCart
 } from "lucide-react";
+import Header from "../components/header";
+import { useAuth } from "../hooks/use-auth";
 
 export default function Home() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Middleware will redirect to login
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">Ascend Global</h1>
-              <span className="ml-2 text-sm text-gray-500">Business Management System</span>
-            </div>
-            <nav className="flex space-x-4">
-              <Link href="/dashboard" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
-                Dashboard
-              </Link>
-              <Link href="/orders" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
-                Orders
-              </Link>
-              <Link href="/purchase-orders" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
-                Purchase Orders
-              </Link>
-              <Link href="/customers" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
-                Customers
-              </Link>
-              <Link href="/leads" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
-                Leads
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -62,7 +56,7 @@ export default function Home() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Today's Revenue</p>
-                <p className="text-2xl font-semibold text-gray-900">$0.00</p>
+                <p className="text-2xl font-semibold text-gray-900">Rs.0.00</p>
               </div>
             </div>
           </div>
@@ -98,7 +92,7 @@ export default function Home() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Expenses</p>
-                <p className="text-2xl font-semibold text-gray-900">$0.00</p>
+                <p className="text-2xl font-semibold text-gray-900">Rs.0.00</p>
               </div>
             </div>
           </div>

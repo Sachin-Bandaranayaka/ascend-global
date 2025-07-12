@@ -14,7 +14,6 @@ import {
   Trash2
 } from 'lucide-react';
 import { Customer } from '@/lib/types';
-import { supabase } from '@/lib/supabase';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -27,52 +26,19 @@ export default function CustomersPage() {
 
   const fetchCustomers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const response = await fetch('/api/customers');
       
-      if (error) {
-        console.error('Error fetching customers:', error);
-        // Fallback to mock data
-        setCustomers([
-          {
-            id: '1',
-            name: 'John Doe',
-            email: 'john@example.com',
-            phone: '+1234567890',
-            address: '123 Main St',
-            city: 'New York',
-            state: 'NY',
-            country: 'USA',
-            postal_code: '10001',
-            created_at: '2024-01-15T10:00:00Z',
-            updated_at: '2024-01-15T10:00:00Z',
-            is_returning_customer: true,
-            total_orders: 5,
-            total_spent: 450.00,
-            notes: 'VIP customer'
-          },
-          {
-            id: '2',
-            name: 'Jane Smith',
-            email: 'jane@example.com',
-            phone: '+1234567891',
-            address: '456 Oak Ave',
-            city: 'Los Angeles',
-            state: 'CA',
-            country: 'USA',
-            postal_code: '90210',
-            created_at: '2024-01-20T14:30:00Z',
-            updated_at: '2024-01-20T14:30:00Z',
-            is_returning_customer: false,
-            total_orders: 1,
-            total_spent: 89.99,
-            notes: 'First-time customer'
-          }
-        ]);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.error) {
+        console.error('Error fetching customers:', result.error);
+        setCustomers([]);
       } else {
-        setCustomers(data || []);
+        setCustomers(result.customers || []);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -181,7 +147,7 @@ export default function CustomersPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Average Order Value</p>
                   <p className="text-2xl font-semibold text-gray-900">
-                    ${customers.length > 0 ? (customers.reduce((sum, c) => sum + c.total_spent, 0) / customers.length).toFixed(2) : '0.00'}
+                    Rs.{customers.length > 0 ? (customers.reduce((sum, c) => sum + c.total_spent, 0) / customers.length).toFixed(2) : '0.00'}
                   </p>
                 </div>
               </div>
@@ -270,7 +236,7 @@ export default function CustomersPage() {
                           {customer.total_orders} order{customer.total_orders !== 1 ? 's' : ''}
                         </p>
                         <p className="text-sm text-gray-500">
-                          ${customer.total_spent.toFixed(2)} total
+                          Rs.{customer.total_spent.toFixed(2)} total
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -302,4 +268,4 @@ export default function CustomersPage() {
       </main>
     </div>
   );
-} 
+}

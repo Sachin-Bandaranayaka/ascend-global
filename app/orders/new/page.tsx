@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   ArrowLeft, 
   Plus, 
@@ -24,6 +24,7 @@ type OrderItemForm = {
 
 export default function NewOrderPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +49,19 @@ export default function NewOrderPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+    
+    // Handle URL parameters for lead conversion
+    const customerId = searchParams.get('customer_id');
+    const leadId = searchParams.get('lead_id');
+    
+    if (customerId) {
+      setFormData(prev => ({
+        ...prev,
+        customer_id: customerId,
+        lead_id: leadId || ''
+      }));
+    }
+  }, [searchParams]);
 
   const fetchData = async () => {
     try {
@@ -164,6 +177,23 @@ export default function NewOrderPage() {
       }));
     }
   };
+
+  // Auto-populate customer data when customer_id changes
+  useEffect(() => {
+    if (formData.customer_id && customers.length > 0) {
+      const customer = customers.find(c => c.id === formData.customer_id);
+      if (customer && !formData.shipping_address) {
+        setFormData(prev => ({
+          ...prev,
+          shipping_address: customer.address || '',
+          shipping_city: customer.city || '',
+          shipping_state: customer.state || '',
+          shipping_country: customer.country || 'USA',
+          shipping_postal_code: customer.postal_code || ''
+        }));
+      }
+    }
+  }, [formData.customer_id, customers]);
 
   const handleOrderItemChange = (index: number, field: string, value: string | number) => {
     const newItems = [...orderItems];
@@ -341,7 +371,7 @@ export default function NewOrderPage() {
                       <option value="">Select a product</option>
                       {products.map(product => (
                         <option key={product.id} value={product.id}>
-                          {product.name} - ${product.selling_price}
+                          {product.name} - Rs.{product.selling_price}
                         </option>
                       ))}
                     </select>
@@ -391,7 +421,7 @@ export default function NewOrderPage() {
 
             <div className="mt-4 text-right">
               <div className="text-lg font-semibold text-gray-900">
-                Subtotal: ${orderItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toFixed(2)}
+                Subtotal: Rs.{orderItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toFixed(2)}
               </div>
             </div>
           </div>
@@ -534,16 +564,16 @@ export default function NewOrderPage() {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span>${orderItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toFixed(2)}</span>
+                <span>Rs.{orderItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Shipping:</span>
-                <span>${formData.shipping_cost.toFixed(2)}</span>
+                <span>Rs.{formData.shipping_cost.toFixed(2)}</span>
               </div>
               <div className="border-t pt-2">
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Total:</span>
-                  <span>${calculateTotal().toFixed(2)}</span>
+                  <span>Rs.{calculateTotal().toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -579,4 +609,4 @@ export default function NewOrderPage() {
       </main>
     </div>
   );
-} 
+}

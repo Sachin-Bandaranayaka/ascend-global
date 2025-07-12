@@ -116,7 +116,7 @@ export default function ReportsPage() {
               </div>
               <div className="ml-4 flex-1">
                 <p className="text-sm font-medium text-gray-600">Revenue</p>
-                <p className="text-2xl font-semibold text-gray-900">${reportData.revenue.current.toFixed(2)}</p>
+                <p className="text-2xl font-semibold text-gray-900">Rs.{reportData.revenue.current.toFixed(2)}</p>
                 <div className="flex items-center mt-1">
                   <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
                   <span className="text-sm text-green-600">+{reportData.revenue.growth}%</span>
@@ -148,7 +148,7 @@ export default function ReportsPage() {
               </div>
               <div className="ml-4 flex-1">
                 <p className="text-sm font-medium text-gray-600">Expenses</p>
-                <p className="text-2xl font-semibold text-gray-900">${reportData.expenses.current.toFixed(2)}</p>
+                <p className="text-2xl font-semibold text-gray-900">Rs.{reportData.expenses.current.toFixed(2)}</p>
                 <div className="flex items-center mt-1">
                   <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
                   <span className="text-sm text-red-600">+{reportData.expenses.growth}%</span>
@@ -164,7 +164,7 @@ export default function ReportsPage() {
               </div>
               <div className="ml-4 flex-1">
                 <p className="text-sm font-medium text-gray-600">Net Profit</p>
-                <p className="text-2xl font-semibold text-gray-900">${reportData.profit.current.toFixed(2)}</p>
+                <p className="text-2xl font-semibold text-gray-900">Rs.{reportData.profit.current.toFixed(2)}</p>
                 <div className="flex items-center mt-1">
                   <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
                   <span className="text-sm text-green-600">+{reportData.profit.growth}%</span>
@@ -182,16 +182,16 @@ export default function ReportsPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Gross Revenue</span>
-                <span className="text-sm font-medium text-green-600">${reportData.revenue.current.toFixed(2)}</span>
+                <span className="text-sm font-medium text-green-600">Rs.{reportData.revenue.current.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Total Expenses</span>
-                <span className="text-sm font-medium text-red-600">-${reportData.expenses.current.toFixed(2)}</span>
+                <span className="text-sm font-medium text-red-600">-Rs.{reportData.expenses.current.toFixed(2)}</span>
               </div>
               <div className="border-t pt-4">
                 <div className="flex justify-between items-center">
                   <span className="text-base font-medium text-gray-900">Net Profit</span>
-                  <span className="text-base font-semibold text-green-600">${reportData.profit.current.toFixed(2)}</span>
+                  <span className="text-base font-semibold text-green-600">Rs.{reportData.profit.current.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-sm text-gray-600">Profit Margin</span>
@@ -243,7 +243,7 @@ export default function ReportsPage() {
                   <div className="flex-1">
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-sm font-medium text-gray-900">{expense.category}</span>
-                      <span className="text-sm text-gray-600">${expense.amount.toFixed(2)}</span>
+                      <span className="text-sm text-gray-600">Rs.{expense.amount.toFixed(2)}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
@@ -269,7 +269,7 @@ export default function ReportsPage() {
                     <p className="text-sm text-gray-500">{product.orders} orders</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">${product.revenue.toFixed(2)}</p>
+                    <p className="text-sm font-medium text-gray-900">Rs.{product.revenue.toFixed(2)}</p>
                     <p className="text-sm text-gray-500">revenue</p>
                   </div>
                 </div>
@@ -308,4 +308,4 @@ export default function ReportsPage() {
       </main>
     </div>
   );
-} 
+}

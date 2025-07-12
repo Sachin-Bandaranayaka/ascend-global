@@ -245,7 +245,7 @@ export default function ReturnsPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Return Costs</p>
                   <p className="text-2xl font-semibold text-gray-900">
-                    ${returns.reduce((sum, r) => sum + r.return_shipping_cost, 0).toFixed(2)}
+                    Rs.{returns.reduce((sum, r) => sum + r.return_shipping_cost, 0).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -307,10 +307,10 @@ export default function ReturnsPage() {
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
                         <p className="text-sm font-medium text-gray-900">
-                          Refund: ${returnItem.refund_amount.toFixed(2)}
+                          Refund: Rs.{returnItem.refund_amount.toFixed(2)}
                         </p>
                         <p className="text-sm text-gray-500">
-                          Shipping: ${returnItem.return_shipping_cost.toFixed(2)}
+                          Shipping: Rs.{returnItem.return_shipping_cost.toFixed(2)}
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -337,4 +337,4 @@ export default function ReturnsPage() {
       </main>
     </div>
   );
-} 
+}

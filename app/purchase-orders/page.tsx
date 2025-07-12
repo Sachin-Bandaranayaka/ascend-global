@@ -201,7 +201,7 @@ export default function PurchaseOrdersPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Pending</p>
-                <p className="text-2xl font-bold text-gray-900">${totals.pending.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-900">Rs.{totals.pending.toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -213,7 +213,7 @@ export default function PurchaseOrdersPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Paid</p>
-                <p className="text-2xl font-bold text-gray-900">${totals.paid.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-900">Rs.{totals.paid.toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -225,7 +225,7 @@ export default function PurchaseOrdersPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Overdue</p>
-                <p className="text-2xl font-bold text-gray-900">${totals.overdue.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-900">Rs.{totals.overdue.toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -336,7 +336,7 @@ export default function PurchaseOrdersPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          ${order.total_amount.toLocaleString()}
+                          Rs.{order.total_amount.toLocaleString()}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -375,4 +375,4 @@ export default function PurchaseOrdersPage() {
       </div>
     </div>
   );
-} 
+}

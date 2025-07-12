@@ -19,8 +19,11 @@ import {
 } from 'lucide-react';
 import { DashboardStats } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/use-auth';
+import Header from '@/components/header';
 
 export default function DashboardPage() {
+  const { user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('today');
@@ -103,21 +106,19 @@ export default function DashboardPage() {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-24 bg-gray-200 rounded"></div>
-              ))}
-            </div>
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
     );
+  }
+
+  if (!user) {
+    return null; // Middleware will redirect to login
   }
 
   if (!stats) return null;
@@ -127,15 +128,17 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <Header />
+      
+      {/* Dashboard Header */}
+      <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Link href="/" className="mr-4">
-                <ArrowLeft className="h-6 w-6 text-gray-600 hover:text-gray-900" />
-              </Link>
               <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+              <span className="ml-3 text-sm text-gray-500">
+                Welcome back, {user.email?.split('@')[0]}!
+              </span>
             </div>
             <div className="flex items-center space-x-4">
               <div className="relative">
@@ -154,7 +157,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Key Metrics */}
@@ -166,7 +169,7 @@ export default function DashboardPage() {
               </div>
               <div className="ml-4 flex-1">
                 <p className="text-sm font-medium text-gray-600">Today's Revenue</p>
-                <p className="text-2xl font-semibold text-gray-900">${stats.todayRevenue.toFixed(2)}</p>
+                <p className="text-2xl font-semibold text-gray-900">Rs.{stats.todayRevenue.toFixed(2)}</p>
                 <div className="flex items-center mt-1">
                   <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
                   <span className="text-sm text-green-600">+12.5%</span>
@@ -214,7 +217,7 @@ export default function DashboardPage() {
               </div>
               <div className="ml-4 flex-1">
                 <p className="text-sm font-medium text-gray-600">Total Expenses</p>
-                <p className="text-2xl font-semibold text-gray-900">${stats.totalExpenses.toFixed(2)}</p>
+                <p className="text-2xl font-semibold text-gray-900">Rs.{stats.totalExpenses.toFixed(2)}</p>
                 <div className="flex items-center mt-1">
                   <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
                   <span className="text-sm text-red-600">+5.2%</span>
@@ -231,11 +234,11 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Revenue</span>
-                <span className="text-sm font-medium text-green-600">+${stats.monthlyRevenue.toFixed(2)}</span>
+                <span className="text-sm font-medium text-green-600">+Rs.{stats.monthlyRevenue.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Expenses</span>
-                <span className="text-sm font-medium text-red-600">-${stats.monthlyExpenses.toFixed(2)}</span>
+                <span className="text-sm font-medium text-red-600">-Rs.{stats.monthlyExpenses.toFixed(2)}</span>
               </div>
               <div className="border-t pt-4">
                 <div className="flex justify-between items-center">
@@ -247,7 +250,7 @@ export default function DashboardPage() {
                       <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
                     )}
                     <span className={`text-base font-semibold ${isProfitable ? 'text-green-600' : 'text-red-600'}`}>
-                      ${profit.toFixed(2)}
+                      Rs.{profit.toFixed(2)}
                     </span>
                   </div>
                 </div>

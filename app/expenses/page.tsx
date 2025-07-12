@@ -19,7 +19,6 @@ import {
   Trash2
 } from 'lucide-react';
 import { Expense } from '@/lib/types';
-import { supabase } from '@/lib/supabase';
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -33,96 +32,19 @@ export default function ExpensesPage() {
 
   const fetchExpenses = async () => {
     try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const response = await fetch('/api/expenses');
       
-      if (error) {
-        console.error('Error fetching expenses:', error);
-        // Fallback to mock data
-      setExpenses([
-        {
-          id: '1',
-          type: 'packaging',
-          description: 'Monthly packaging supplies - boxes, bubble wrap, tape',
-          amount: 500.00,
-          expense_date: '2024-01-15',
-          order_id: undefined,
-          lead_id: undefined,
-          receipt_url: undefined,
-          notes: 'Bulk order from supplier',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z'
-        },
-        {
-          id: '2',
-          type: 'lead_cost',
-          description: 'Facebook advertising spend for lead generation',
-          amount: 1200.00,
-          expense_date: '2024-01-20',
-          order_id: undefined,
-          lead_id: '1',
-          receipt_url: undefined,
-          notes: 'Campaign targeting electronics enthusiasts',
-          created_at: '2024-01-20T14:30:00Z',
-          updated_at: '2024-01-20T14:30:00Z'
-        },
-        {
-          id: '3',
-          type: 'salary',
-          description: 'Order processing salary calculation',
-          amount: 45.00,
-          expense_date: '2024-01-22',
-          order_id: '1',
-          lead_id: undefined,
-          receipt_url: undefined,
-          notes: 'Calculated based on order value',
-          created_at: '2024-01-22T11:20:00Z',
-          updated_at: '2024-01-22T11:20:00Z'
-        },
-        {
-          id: '4',
-          type: 'return_shipping',
-          description: 'Return shipping cost for damaged product',
-          amount: 25.00,
-          expense_date: '2024-01-25',
-          order_id: '2',
-          lead_id: undefined,
-          receipt_url: undefined,
-          notes: 'Customer return - product damaged in transit',
-          created_at: '2024-01-25T09:15:00Z',
-          updated_at: '2024-01-25T09:15:00Z'
-        },
-        {
-          id: '5',
-          type: 'printing',
-          description: 'Invoice printing and shipping labels',
-          amount: 75.00,
-          expense_date: '2024-01-28',
-          order_id: undefined,
-          lead_id: undefined,
-          receipt_url: undefined,
-          notes: 'Monthly printing costs',
-          created_at: '2024-01-28T16:45:00Z',
-          updated_at: '2024-01-28T16:45:00Z'
-        },
-        {
-          id: '6',
-          type: 'other',
-          description: 'Office utilities and internet',
-          amount: 150.00,
-          expense_date: '2024-01-30',
-          order_id: undefined,
-          lead_id: undefined,
-          receipt_url: undefined,
-          notes: 'Monthly utility bills',
-          created_at: '2024-01-30T12:00:00Z',
-          updated_at: '2024-01-30T12:00:00Z'
-        }
-              ]);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.error) {
+        console.error('Error fetching expenses:', result.error);
+        setExpenses([]);
       } else {
-        setExpenses(data || []);
+        setExpenses(result.expenses || []);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -282,7 +204,7 @@ export default function ExpensesPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Expenses</p>
-                  <p className="text-2xl font-semibold text-gray-900">${totalExpenses.toFixed(2)}</p>
+                  <p className="text-2xl font-semibold text-gray-900">Rs.{totalExpenses.toFixed(2)}</p>
                 </div>
               </div>
             </div>
@@ -295,7 +217,7 @@ export default function ExpensesPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Lead Costs</p>
                   <p className="text-2xl font-semibold text-gray-900">
-                    ${expenses.filter(e => e.type === 'lead_cost').reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
+                    Rs.{expenses.filter(e => e.type === 'lead_cost').reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -309,7 +231,7 @@ export default function ExpensesPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Packaging</p>
                   <p className="text-2xl font-semibold text-gray-900">
-                    ${expenses.filter(e => e.type === 'packaging').reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
+                    Rs.{expenses.filter(e => e.type === 'packaging').reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -323,7 +245,7 @@ export default function ExpensesPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Salaries</p>
                   <p className="text-2xl font-semibold text-gray-900">
-                    ${expenses.filter(e => e.type === 'salary').reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
+                    Rs.{expenses.filter(e => e.type === 'salary').reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -394,7 +316,7 @@ export default function ExpensesPage() {
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
                         <p className="text-lg font-semibold text-red-600">
-                          -${expense.amount.toFixed(2)}
+                          -Rs.{expense.amount.toFixed(2)}
                         </p>
                         <p className="text-sm text-gray-500">
                           {expense.order_id ? 'Order expense' : expense.lead_id ? 'Lead expense' : 'General expense'}
@@ -435,4 +357,4 @@ export default function ExpensesPage() {
       </main>
     </div>
   );
-} 
+}

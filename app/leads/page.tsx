@@ -15,79 +15,202 @@ import {
   Users,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  ShoppingCart
 } from 'lucide-react';
 import { Lead } from '@/lib/types';
-import { supabase } from '@/lib/supabase';
+
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [totalLeadCost, setTotalLeadCost] = useState<string>('0.00');
+  const [editingCost, setEditingCost] = useState(false);
+  const [tempCost, setTempCost] = useState<string>('0.00');
 
   useEffect(() => {
     fetchLeads();
+    fetchTotalLeadCost();
   }, []);
+
+  const fetchTotalLeadCost = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      if (response.ok) {
+        const result = await response.json();
+        setTotalLeadCost(result.total_lead_cost || '0.00');
+        setTempCost(result.total_lead_cost || '0.00');
+      }
+    } catch (error) {
+      console.error('Error fetching total lead cost:', error);
+    }
+  };
+
+  const updateTotalLeadCost = async (newCost: string) => {
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ total_lead_cost: newCost }),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setTotalLeadCost(result.total_lead_cost);
+        setEditingCost(false);
+      } else {
+        alert('Failed to update total lead cost');
+      }
+    } catch (error) {
+      console.error('Error updating total lead cost:', error);
+      alert('Failed to update total lead cost');
+    }
+  };
+
+  const handleCostEdit = () => {
+    setEditingCost(true);
+  };
+
+  const handleCostSave = () => {
+    if (tempCost && !isNaN(parseFloat(tempCost))) {
+      updateTotalLeadCost(tempCost);
+    } else {
+      alert('Please enter a valid number');
+    }
+  };
+
+  const handleCostCancel = () => {
+    setTempCost(totalLeadCost);
+    setEditingCost(false);
+  };
 
   const fetchLeads = async () => {
     try {
-      const { data, error } = await supabase
-        .from('leads')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const response = await fetch('/api/leads');
       
-      if (error) {
-        console.error('Error fetching leads:', error);
-        // Fallback to mock data
-        setLeads([
-          {
-            id: '1',
-            source: 'facebook',
-            lead_name: 'John Doe',
-            email: 'john@example.com',
-            phone: '+1234567890',
-            address: '123 Main St',
-            city: 'New York',
-            state: 'NY',
-            country: 'USA',
-            postal_code: '10001',
-            status: 'converted',
-            lead_cost: 25.00,
-            notes: 'Interested in electronics',
-            created_at: '2024-01-15T10:00:00Z',
-            updated_at: '2024-01-15T10:00:00Z',
-            converted_at: '2024-01-16T14:30:00Z',
-            customer_id: '1'
-          },
-          {
-            id: '2',
-            source: 'facebook',
-            lead_name: 'Jane Smith',
-            email: 'jane@example.com',
-            phone: '+1234567891',
-            address: '456 Oak Ave',
-            city: 'Los Angeles',
-            state: 'CA',
-            country: 'USA',
-            postal_code: '90210',
-            status: 'qualified',
-            lead_cost: 30.00,
-            notes: 'Looking for fitness equipment',
-            created_at: '2024-01-20T14:30:00Z',
-            updated_at: '2024-01-20T14:30:00Z',
-            converted_at: undefined,
-            customer_id: undefined
-          }
-        ]);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.error) {
+        console.error('Error fetching leads:', result.error);
+        setLeads([]);
       } else {
-        setLeads(data || []);
+        setLeads(result.leads || []);
       }
     } catch (error) {
       console.error('Error:', error);
       setLeads([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const deleteLead = async (leadId: string) => {
+    try {
+      const response = await fetch(`/api/leads?id=${leadId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.error) {
+        console.error('Error deleting lead:', result.error);
+        alert('Failed to delete lead');
+      } else {
+        setLeads(leads.filter(lead => lead.id !== leadId));
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to delete lead');
+    }
+  };
+
+  const convertToOrder = async (lead: Lead) => {
+    try {
+      // First create customer if not exists
+      let customerId = lead.customer_id;
+      
+      if (!customerId) {
+        const response = await fetch('/api/customers', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: lead.lead_name,
+            email: lead.email,
+            phone: lead.phone,
+            address: lead.address,
+            city: lead.city,
+            state: lead.state,
+            country: lead.country,
+            postal_code: lead.postal_code,
+            is_returning_customer: false,
+            total_orders: 0,
+            total_spent: 0,
+            notes: `Converted from lead: ${lead.notes || ''}`
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.error) {
+          console.error('Error creating customer:', result.error);
+          alert('Failed to create customer');
+          return;
+        }
+        customerId = result.customer.id;
+      }
+
+      // Update lead status and customer_id
+      const leadResponse = await fetch(`/api/leads?id=${lead.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'converted',
+          customer_id: customerId,
+          converted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }),
+      });
+
+      if (!leadResponse.ok) {
+        throw new Error(`HTTP error! status: ${leadResponse.status}`);
+      }
+
+      const leadResult = await leadResponse.json();
+      
+      if (leadResult.error) {
+        console.error('Error updating lead:', leadResult.error);
+        alert('Failed to update lead status');
+        return;
+      }
+
+      // Update the local leads state
+      setLeads(leads.map(l => l.id === lead.id ? { ...l, status: 'converted', customer_id: customerId } : l));
+
+      // Redirect to create order with customer pre-filled
+      window.location.href = `/orders/new?customer_id=${customerId}&lead_id=${lead.id}`;
+    } catch (error) {
+      console.error('Error converting lead:', error);
+      alert('Failed to convert lead to order');
     }
   };
 
@@ -165,13 +288,22 @@ export default function LeadsPage() {
               </Link>
               <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
             </div>
-            <Link
-              href="/leads/new"
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Add Lead
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                href="/leads/import"
+                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center gap-2"
+              >
+                <Target className="h-4 w-4" />
+                Import Leads
+              </Link>
+              <Link
+                href="/leads/new"
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Lead
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -254,11 +386,45 @@ export default function LeadsPage() {
                 <div className="p-2 bg-red-100 rounded-lg">
                   <Target className="h-6 w-6 text-red-600" />
                 </div>
-                <div className="ml-4">
+                <div className="ml-4 flex-1">
                   <p className="text-sm font-medium text-gray-600">Total Lead Cost</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    ${leads.reduce((sum, l) => sum + l.lead_cost, 0).toFixed(2)}
-                  </p>
+                  {editingCost ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={tempCost}
+                        onChange={(e) => setTempCost(e.target.value)}
+                        className="text-lg font-semibold text-gray-900 border border-gray-300 rounded px-2 py-1 w-24"
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleCostSave}
+                        className="text-green-600 hover:text-green-800 text-sm"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={handleCostCancel}
+                        className="text-gray-600 hover:text-gray-800 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="text-2xl font-semibold text-gray-900">
+                        Rs.{totalLeadCost}
+                      </p>
+                      <button
+                        onClick={handleCostEdit}
+                        className="text-gray-400 hover:text-gray-600 text-sm"
+                        title="Edit total lead cost"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -331,7 +497,7 @@ export default function LeadsPage() {
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
                         <p className="text-sm font-medium text-gray-900">
-                          ${lead.lead_cost.toFixed(2)}
+                          Rs.{lead.lead_cost.toFixed(2)}
                         </p>
                         <p className="text-sm text-gray-500">
                           Lead cost
@@ -350,11 +516,19 @@ export default function LeadsPage() {
                         >
                           <Edit className="h-4 w-4" />
                         </Link>
+                        {lead.status !== 'converted' && (
+                          <button
+                            onClick={() => convertToOrder(lead)}
+                            className="text-gray-400 hover:text-green-600"
+                            title="Convert to Order"
+                          >
+                            <ShoppingCart className="h-4 w-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             if (confirm('Are you sure you want to delete this lead?')) {
-                              // Handle delete
-                              console.log('Delete lead:', lead.id);
+                              deleteLead(lead.id);
                             }
                           }}
                           className="text-gray-400 hover:text-red-600"
@@ -372,4 +546,4 @@ export default function LeadsPage() {
       </main>
     </div>
   );
-} 
+}

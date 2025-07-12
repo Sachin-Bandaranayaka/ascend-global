@@ -12,7 +12,6 @@ import {
   Tag
 } from 'lucide-react';
 import { CreateProductForm } from '@/lib/types';
-import { supabase } from '@/lib/supabase';
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -64,39 +63,31 @@ export default function NewProductPage() {
     setSubmitting(true);
 
     try {
-      // In a real implementation, you would:
-      // 1. Create the product in the database
-      // 2. Handle validation errors
-      // 3. Upload any product images
-      // 4. Set up initial stock levels
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
 
-      const { data, error } = await supabase
-        .from('products')
-        .insert([{
-          name: formData.name,
-          description: formData.description,
-          sku: formData.sku,
-          cost_price: formData.cost_price,
-          selling_price: formData.selling_price,
-          stock_quantity: formData.stock_quantity,
-          is_active: true
-        }])
-        .select();
-
-      if (error) {
-        console.error('Error creating product:', error);
-        // For now, just log and continue - in production you'd show an error message
-      } else {
-        console.log('Product created successfully:', data);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Simulate API call if database fails
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const result = await response.json();
 
-      // Redirect to products page
-      router.push('/products');
+      if (result.error) {
+        console.error('Error creating product:', result.error);
+        alert('Error creating product. Please try again.');
+      } else {
+        console.log('Product created successfully:', result.product);
+        alert('Product created successfully!');
+        router.push('/products');
+      }
     } catch (error) {
       console.error('Error creating product:', error);
+      alert('Error creating product. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -210,7 +201,7 @@ export default function NewProductPage() {
                   Cost Price *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rs.</span>
                   <input
                     type="number"
                     step="0.01"
@@ -230,7 +221,7 @@ export default function NewProductPage() {
                   Selling Price *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rs.</span>
                   <input
                     type="number"
                     step="0.01"
@@ -261,7 +252,7 @@ export default function NewProductPage() {
                   <Tag className="h-4 w-4 text-green-600" />
                 </div>
                 <div className="text-2xl font-bold text-green-900 mt-1">
-                  ${(formData.selling_price - formData.cost_price).toFixed(2)}
+                  Rs.{(formData.selling_price - formData.cost_price).toFixed(2)}
                 </div>
               </div>
               
@@ -291,7 +282,7 @@ export default function NewProductPage() {
               <div className="text-sm text-gray-600 space-y-1">
                 <div>• <strong>Profit Margin:</strong> (Selling Price - Cost Price) ÷ Selling Price × 100</div>
                 <div>• <strong>Markup:</strong> (Selling Price - Cost Price) ÷ Cost Price × 100</div>
-                <div>• <strong>Total Inventory Value:</strong> ${(formData.cost_price * formData.stock_quantity).toFixed(2)}</div>
+                <div>• <strong>Total Inventory Value:</strong> Rs.{(formData.cost_price * formData.stock_quantity).toFixed(2)}</div>
               </div>
             </div>
           </div>
@@ -317,15 +308,15 @@ export default function NewProductPage() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Cost Price:</span>
-                  <span className="font-medium">${formData.cost_price.toFixed(2)}</span>
+                  <span className="font-medium">Rs.{formData.cost_price.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Selling Price:</span>
-                  <span className="font-medium">${formData.selling_price.toFixed(2)}</span>
+                  <span className="font-medium">Rs.{formData.selling_price.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Profit per Unit:</span>
-                  <span className="font-medium text-green-600">${(formData.selling_price - formData.cost_price).toFixed(2)}</span>
+                  <span className="font-medium text-green-600">Rs.{(formData.selling_price - formData.cost_price).toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -361,4 +352,4 @@ export default function NewProductPage() {
       </main>
     </div>
   );
-} 
+}

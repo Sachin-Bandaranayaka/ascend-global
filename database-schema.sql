@@ -413,6 +413,30 @@ INSERT INTO products (name, description, sku, cost_price, selling_price, stock_q
   ('Bluetooth Speaker', 'Compact wireless speaker', 'BTS-001', 25.00, 59.99, 75),
   ('Fitness Tracker', 'Smart fitness tracking device', 'FIT-001', 35.00, 79.99, 50);
 
+-- Create settings table for application configuration
+CREATE TABLE settings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  key VARCHAR(255) UNIQUE NOT NULL,
+  value TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS for settings table
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for settings table
+CREATE POLICY "Allow authenticated users to manage settings" ON settings
+  FOR ALL USING (auth.role() = 'authenticated');
+
+-- Create index for settings
+CREATE INDEX idx_settings_key ON settings(key);
+
+-- Create trigger for settings updated_at
+CREATE TRIGGER update_settings_updated_at BEFORE UPDATE ON settings
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Insert sample suppliers for reference
 INSERT INTO suppliers (name, email, phone, contact_person, payment_terms, is_active) VALUES
   ('Office Depot', 'orders@officedepot.com', '+1-555-0101', 'John Smith', 'Net 30', true),
@@ -421,4 +445,8 @@ INSERT INTO suppliers (name, email, phone, contact_person, payment_terms, is_act
   ('Google Ads', 'billing@google.com', '+1-555-0104', 'Ads Support', 'Immediate', true),
   ('Shopify', 'billing@shopify.com', '+1-555-0105', 'Billing Team', 'Net 30', true),
   ('Local Printing Co.', 'orders@localprint.com', '+1-555-0106', 'Mike Wilson', 'Net 15', true),
-  ('Packaging Solutions', 'sales@packagesolutions.com', '+1-555-0107', 'Lisa Chen', 'Net 30', true); 
+  ('Packaging Solutions', 'sales@packagesolutions.com', '+1-555-0107', 'Lisa Chen', 'Net 30', true);
+
+-- Insert default settings
+INSERT INTO settings (key, value, description) VALUES
+  ('total_lead_cost', '0.00', 'Manual total lead cost override');

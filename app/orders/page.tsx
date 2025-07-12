@@ -359,10 +359,10 @@ export default function OrdersPage() {
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
                         <p className="text-sm font-medium text-gray-900">
-                          ${order.total_amount.toFixed(2)}
+                          Rs.{order.total_amount.toFixed(2)}
                         </p>
                         <p className="text-sm text-gray-500">
-                          +${order.shipping_cost.toFixed(2)} shipping
+                          +Rs.{order.shipping_cost.toFixed(2)} shipping
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -389,4 +389,4 @@ export default function OrdersPage() {
       </main>
     </div>
   );
-} 
+}

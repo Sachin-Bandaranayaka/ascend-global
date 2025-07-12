@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 
 interface ExpenseFormData {
   description: string
@@ -59,34 +58,23 @@ export default function NewExpensePage() {
 
   const fetchSuppliers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('id, name, email, phone')
-        .order('name')
-
-      if (error) {
-        console.error('Error fetching suppliers:', error)
-        // Mock data fallback
-        setSuppliers([
-          { id: '1', name: 'Office Depot', email: 'orders@officedepot.com', phone: '+1-555-0101' },
-          { id: '2', name: 'Amazon Business', email: 'business@amazon.com', phone: '+1-555-0102' },
-          { id: '3', name: 'Facebook Ads', email: 'billing@facebook.com', phone: '+1-555-0103' },
-          { id: '4', name: 'Google Ads', email: 'billing@google.com', phone: '+1-555-0104' },
-          { id: '5', name: 'Shopify', email: 'billing@shopify.com', phone: '+1-555-0105' }
-        ])
+      const response = await fetch('/api/suppliers');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.error) {
+        console.error('Error fetching suppliers:', result.error);
+        setSuppliers([]);
       } else {
-        setSuppliers(data || [])
+        setSuppliers(result.suppliers || []);
       }
     } catch (error) {
-      console.error('Error:', error)
-      // Mock data fallback
-      setSuppliers([
-        { id: '1', name: 'Office Depot', email: 'orders@officedepot.com', phone: '+1-555-0101' },
-        { id: '2', name: 'Amazon Business', email: 'business@amazon.com', phone: '+1-555-0102' },
-        { id: '3', name: 'Facebook Ads', email: 'billing@facebook.com', phone: '+1-555-0103' },
-        { id: '4', name: 'Google Ads', email: 'billing@google.com', phone: '+1-555-0104' },
-        { id: '5', name: 'Shopify', email: 'billing@shopify.com', phone: '+1-555-0105' }
-      ])
+      console.error('Error:', error);
+      setSuppliers([]);
     }
   }
 
@@ -103,15 +91,25 @@ export default function NewExpensePage() {
     setLoading(true)
 
     try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .insert([{
+      const response = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           ...formData,
           supplier_id: formData.supplier_id || null
-        }])
+        }),
+      });
 
-      if (error) {
-        console.error('Error creating expense:', error)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.error) {
+        console.error('Error creating expense:', result.error)
         alert('Error creating expense. Please try again.')
       } else {
         alert('Expense created successfully!')
@@ -160,7 +158,7 @@ export default function NewExpensePage() {
 
               <div>
                 <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
-                  Amount ($) *
+                  Amount (Rs.) *
                 </label>
                 <input
                   type="number"
@@ -278,7 +276,7 @@ export default function NewExpensePage() {
                 </div>
                 <div>
                   <span className="text-gray-600">Amount:</span>
-                  <span className="ml-2 text-gray-900 font-semibold">${formData.amount.toFixed(2)}</span>
+                  <span className="ml-2 text-gray-900 font-semibold">Rs.{formData.amount.toFixed(2)}</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Category:</span>
