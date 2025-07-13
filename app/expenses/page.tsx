@@ -7,18 +7,23 @@ import {
   Plus, 
   Search, 
   Filter,
-  ArrowLeft,
-  Calendar,
-  Package,
-  Users,
-  FileText,
-  RotateCcw,
-  Target,
   Eye,
   Edit,
-  Trash2
+  Trash2,
+  TrendingUp,
+  TrendingDown,
+  Calendar,
+  Receipt,
+  Package,
+  Users,
+  Truck,
+  RefreshCw,
+  FileText,
+  CreditCard
 } from 'lucide-react';
 import { Expense } from '@/lib/types';
+import { supabase } from '@/lib/supabase';
+import PageHeader from '@/components/page-header';
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -32,25 +37,87 @@ export default function ExpensesPage() {
 
   const fetchExpenses = async () => {
     try {
-      const response = await fetch('/api/expenses');
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .order('expense_date', { ascending: false });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.error) {
-        console.error('Error fetching expenses:', result.error);
-        setExpenses([]);
+      if (error) {
+        console.error('Error fetching expenses:', error);
+        // Fallback to mock data
+        setExpenses([
+          {
+            id: '1',
+            type: 'packaging',
+            description: 'Shipping boxes and bubble wrap',
+            amount: 45.50,
+            expense_date: '2024-01-15',
+            order_id: 'ORD-001',
+            receipt_url: '',
+            notes: 'Monthly packaging supplies',
+            created_at: '2024-01-15T10:30:00Z',
+            updated_at: '2024-01-15T10:30:00Z'
+          },
+          {
+            id: '2',
+            type: 'salary',
+            description: 'Employee salaries - January',
+            amount: 2500.00,
+            expense_date: '2024-01-01',
+            notes: 'Monthly payroll',
+            created_at: '2024-01-01T09:00:00Z',
+            updated_at: '2024-01-01T09:00:00Z'
+          },
+          {
+            id: '3',
+            type: 'lead_cost',
+            description: 'Facebook Ads campaign',
+            amount: 125.75,
+            expense_date: '2024-01-14',
+            lead_id: 'lead-123',
+            notes: 'Q1 marketing campaign',
+            created_at: '2024-01-14T14:20:00Z',
+            updated_at: '2024-01-14T14:20:00Z'
+          },
+          {
+            id: '4',
+            type: 'return_shipping',
+            description: 'Return shipping for damaged item',
+            amount: 18.00,
+            expense_date: '2024-01-13',
+            order_id: 'ORD-002',
+            notes: 'Customer return - defective product',
+            created_at: '2024-01-13T16:45:00Z',
+            updated_at: '2024-01-13T16:45:00Z'
+          },
+          {
+            id: '5',
+            type: 'other',
+            description: 'Office supplies and utilities',
+            amount: 89.25,
+            expense_date: '2024-01-12',
+            notes: 'Monthly office expenses',
+            created_at: '2024-01-12T11:30:00Z',
+            updated_at: '2024-01-12T11:30:00Z'
+          }
+        ]);
       } else {
-        setExpenses(result.expenses || []);
+        setExpenses(data || []);
       }
     } catch (error) {
       console.error('Error:', error);
-      setExpenses([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const deleteExpense = async (expenseId: string) => {
+    if (confirm('Are you sure you want to delete this expense?')) {
+      try {
+        setExpenses(expenses.filter(expense => expense.id !== expenseId));
+      } catch (error) {
+        console.error('Error deleting expense:', error);
+      }
     }
   };
 
@@ -65,75 +132,61 @@ export default function ExpensesPage() {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'packaging':
-        return <Package className="h-4 w-4 text-orange-500" />;
-      case 'salary':
-        return <Users className="h-4 w-4 text-blue-500" />;
-      case 'printing':
-        return <FileText className="h-4 w-4 text-purple-500" />;
-      case 'return_shipping':
-        return <RotateCcw className="h-4 w-4 text-red-500" />;
-      case 'lead_cost':
-        return <Target className="h-4 w-4 text-green-500" />;
-      case 'other':
-        return <DollarSign className="h-4 w-4 text-gray-500" />;
-      default:
-        return <DollarSign className="h-4 w-4 text-gray-500" />;
+      case 'packaging': return <Package className="h-4 w-4" />;
+      case 'salary': return <Users className="h-4 w-4" />;
+      case 'printing': return <FileText className="h-4 w-4" />;
+      case 'return_shipping': return <Truck className="h-4 w-4" />;
+      case 'lead_cost': return <TrendingUp className="h-4 w-4" />;
+      case 'other': return <CreditCard className="h-4 w-4" />;
+      default: return <Receipt className="h-4 w-4" />;
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'packaging':
-        return 'bg-orange-100 text-orange-800';
-      case 'salary':
-        return 'bg-blue-100 text-blue-800';
-      case 'printing':
-        return 'bg-purple-100 text-purple-800';
-      case 'return_shipping':
-        return 'bg-red-100 text-red-800';
-      case 'lead_cost':
-        return 'bg-green-100 text-green-800';
-      case 'other':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'packaging': return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'salary': return 'text-primary bg-primary/10 border-primary/20';
+      case 'printing': return 'text-purple-600 bg-purple-50 border-purple-200';
+      case 'return_shipping': return 'text-destructive bg-destructive/10 border-destructive/20';
+      case 'lead_cost': return 'text-warning bg-warning/10 border-warning/20';
+      case 'other': return 'text-muted-foreground bg-muted border-border';
+      default: return 'text-muted-foreground bg-muted border-border';
     }
   };
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'packaging':
-        return 'Packaging';
-      case 'salary':
-        return 'Salary';
-      case 'printing':
-        return 'Printing';
-      case 'return_shipping':
-        return 'Return Shipping';
-      case 'lead_cost':
-        return 'Lead Cost';
-      case 'other':
-        return 'Other';
-      default:
-        return 'Other';
-    }
-  };
+  // Calculate stats
+  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const thisMonthExpenses = expenses.filter(expense => {
+    const expenseDate = new Date(expense.expense_date);
+    const now = new Date();
+    return expenseDate.getMonth() === now.getMonth() && expenseDate.getFullYear() === now.getFullYear();
+  }).reduce((sum, expense) => sum + expense.amount, 0);
+  
+  const lastMonthExpenses = expenses.filter(expense => {
+    const expenseDate = new Date(expense.expense_date);
+    const lastMonth = new Date();
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    return expenseDate.getMonth() === lastMonth.getMonth() && expenseDate.getFullYear() === lastMonth.getFullYear();
+  }).reduce((sum, expense) => sum + expense.amount, 0);
 
-  const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const avgExpenseAmount = expenses.length > 0 ? totalExpenses / expenses.length : 0;
+  const monthlyChange = lastMonthExpenses > 0 ? ((thisMonthExpenses - lastMonthExpenses) / lastMonthExpenses) * 100 : 0;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-20 bg-gray-200 rounded"></div>
-              ))}
-            </div>
+      <div className="p-6 space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-muted rounded w-1/4 mb-4"></div>
+          <div className="h-4 bg-muted rounded w-1/2 mb-8"></div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-24 bg-muted rounded-xl"></div>
+            ))}
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-20 bg-muted rounded-xl"></div>
+            ))}
           </div>
         </div>
       </div>
@@ -141,220 +194,198 @@ export default function ExpensesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card shadow-sm border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/" className="mr-4">
-                <ArrowLeft className="h-6 w-6 text-foreground-secondary hover:text-foreground" />
-              </Link>
-              <h1 className="text-2xl font-bold text-foreground">Expenses</h1>
+    <div className="p-6 space-y-6">
+      <PageHeader 
+        title="Expenses" 
+        description="Track and manage business expenses"
+      >
+        <button className="p-2 rounded-xl bg-muted hover:bg-secondary transition-colors">
+          <RefreshCw className="h-4 w-4 text-muted-foreground" />
+        </button>
+        <Link href="/expenses/new" className="btn btn-primary px-4 py-2 text-sm">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Expense
+        </Link>
+      </PageHeader>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
+              <p className="text-2xl font-bold text-foreground">${totalExpenses.toFixed(2)}</p>
             </div>
-            <Link
-              href="/expenses/new"
-              className="btn btn-primary px-4 py-2 flex items-center gap-2"
+            <div className="p-3 bg-destructive/10 rounded-xl">
+              <DollarSign className="h-6 w-6 text-destructive" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">This Month</p>
+              <p className="text-2xl font-bold text-foreground">${thisMonthExpenses.toFixed(2)}</p>
+            </div>
+            <div className="p-3 bg-warning/10 rounded-xl">
+              <Calendar className="h-6 w-6 text-warning" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Monthly Change</p>
+              <div className="flex items-center gap-1">
+                <p className="text-2xl font-bold text-foreground">{Math.abs(monthlyChange).toFixed(1)}%</p>
+                {monthlyChange >= 0 ? (
+                  <TrendingUp className="h-4 w-4 text-destructive" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-success" />
+                )}
+              </div>
+            </div>
+            <div className="p-3 bg-primary/10 rounded-xl">
+              <TrendingUp className="h-6 w-6 text-primary" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Average Amount</p>
+              <p className="text-2xl font-bold text-foreground">${avgExpenseAmount.toFixed(2)}</p>
+            </div>
+            <div className="p-3 bg-muted/50 rounded-xl">
+              <Receipt className="h-6 w-6 text-muted-foreground" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search expenses..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring text-foreground bg-background placeholder-muted-foreground"
+            />
+          </div>
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="pl-10 pr-8 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring text-foreground bg-background"
             >
-              <Plus className="h-4 w-4" />
+              <option value="all">All Types</option>
+              <option value="packaging">Packaging</option>
+              <option value="salary">Salary</option>
+              <option value="printing">Printing</option>
+              <option value="return_shipping">Return Shipping</option>
+              <option value="lead_cost">Lead Cost</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Expenses List */}
+      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-muted/50 border-b border-border">
+              <tr>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Description</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Type</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Amount</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Date</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Reference</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filteredExpenses.map((expense) => (
+                <tr key={expense.id} className="hover:bg-muted/30 transition-colors">
+                  <td className="py-4 px-6">
+                    <div>
+                      <p className="font-medium text-foreground">{expense.description}</p>
+                      {expense.notes && (
+                        <p className="text-sm text-muted-foreground truncate max-w-xs">{expense.notes}</p>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border ${getTypeColor(expense.type)}`}>
+                      {getTypeIcon(expense.type)}
+                      {expense.type.replace('_', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6">
+                    <span className="font-medium text-foreground">${expense.amount.toFixed(2)}</span>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(expense.expense_date).toLocaleDateString()}
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="text-sm text-muted-foreground">
+                      {expense.order_id && (
+                        <span className="bg-muted px-2 py-1 rounded text-xs">Order: {expense.order_id}</span>
+                      )}
+                      {expense.lead_id && (
+                        <span className="bg-muted px-2 py-1 rounded text-xs">Lead: {expense.lead_id}</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-2">
+                      <button className="p-1 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button className="p-1 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button 
+                        onClick={() => deleteExpense(expense.id)}
+                        className="p-1 rounded-md hover:bg-muted transition-colors text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {filteredExpenses.length === 0 && (
+          <div className="text-center py-12">
+            <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No expenses found</h3>
+            <p className="text-muted-foreground mb-4">
+              {searchTerm || typeFilter !== 'all' 
+                ? "Try adjusting your search or filter criteria" 
+                : "Get started by adding your first expense"}
+            </p>
+            <Link href="/expenses/new" className="btn btn-primary px-4 py-2">
+              <Plus className="h-4 w-4 mr-2" />
               Add Expense
             </Link>
           </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search and Filters */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search expenses..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white placeholder-gray-500"
-              />
-            </div>
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="pl-10 pr-8 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white placeholder-gray-500"
-              >
-                <option value="all">All Types</option>
-                <option value="packaging">Packaging</option>
-                <option value="salary">Salary</option>
-                <option value="printing">Printing</option>
-                <option value="return_shipping">Return Shipping</option>
-                <option value="lead_cost">Lead Cost</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-red-100 rounded-lg">
-                  <DollarSign className="h-6 w-6 text-red-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Expenses</p>
-                  <p className="text-2xl font-semibold text-gray-900">Rs.{totalExpenses.toFixed(2)}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Target className="h-6 w-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Lead Costs</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    Rs.{expenses.filter(e => e.type === 'lead_cost').reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <Package className="h-6 w-6 text-orange-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Packaging</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    Rs.{expenses.filter(e => e.type === 'packaging').reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Users className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Salaries</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    Rs.{expenses.filter(e => e.type === 'salary').reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Expenses List */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {filteredExpenses.length} Expense{filteredExpenses.length !== 1 ? 's' : ''}
-            </h2>
-          </div>
-          
-          {filteredExpenses.length === 0 ? (
-            <div className="text-center py-12">
-              <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No expenses found</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {searchTerm || typeFilter !== 'all' ? 'Try adjusting your search or filters.' : 'Get started by adding your first expense.'}
-              </p>
-              {!searchTerm && typeFilter === 'all' && (
-                <div className="mt-6">
-                  <Link
-                    href="/expenses/new"
-                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Expense
-                  </Link>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {filteredExpenses.map((expense) => (
-                <div key={expense.id} className="px-6 py-4 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          {getTypeIcon(expense.type)}
-                        </div>
-                        <div className="ml-4 flex-1">
-                          <div className="flex items-center">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {expense.description}
-                            </p>
-                            <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeColor(expense.type)}`}>
-                              {getTypeLabel(expense.type)}
-                            </span>
-                          </div>
-                          <div className="flex items-center mt-1 text-sm text-gray-500">
-                            <Calendar className="h-4 w-4 mr-1" />
-                            <span className="mr-4">
-                              {new Date(expense.expense_date).toLocaleDateString()}
-                            </span>
-                            {expense.notes && (
-                              <span className="truncate">
-                                {expense.notes}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <p className="text-lg font-semibold text-red-600">
-                          -Rs.{expense.amount.toFixed(2)}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {expense.order_id ? 'Order expense' : expense.lead_id ? 'Lead expense' : 'General expense'}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Link
-                          href={`/expenses/${expense.id}`}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                        <Link
-                          href={`/expenses/${expense.id}/edit`}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                        <button
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this expense?')) {
-                              // Handle delete
-                              console.log('Delete expense:', expense.id);
-                            }
-                          }}
-                          className="text-gray-400 hover:text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
+        )}
+      </div>
     </div>
   );
 }

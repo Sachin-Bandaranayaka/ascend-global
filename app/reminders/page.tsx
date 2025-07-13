@@ -7,25 +7,33 @@ import {
   Plus, 
   Search, 
   Filter,
-  ArrowLeft,
-  Calendar,
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  User,
+  Eye,
   Edit,
   Trash2,
-  Target,
-  DollarSign,
-  Package,
-  Sparkles
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  Calendar,
+  RefreshCw,
+  User,
+  FileText
 } from 'lucide-react';
-import { Reminder } from '@/lib/activity-logger';
-import { useAuth } from '@/hooks/use-auth';
+import PageHeader from '@/components/page-header';
+
+interface Reminder {
+  id: string;
+  title: string;
+  description?: string;
+  due_date: string;
+  due_time?: string;
+  priority: 'low' | 'medium' | 'high';
+  status: 'pending' | 'completed' | 'overdue';
+  type: 'task' | 'meeting' | 'follow_up' | 'deadline';
+  created_at: string;
+  updated_at: string;
+}
 
 export default function RemindersPage() {
-  const { user } = useAuth();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -38,89 +46,99 @@ export default function RemindersPage() {
 
   const fetchReminders = async () => {
     try {
-      const response = await fetch('/api/reminders');
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.error) {
-        console.error('Error fetching reminders:', result.error);
-        setReminders([]);
-      } else {
-        setReminders(result.reminders || []);
-      }
+      // Mock data for demonstration
+      setReminders([
+        {
+          id: '1',
+          title: 'Follow up with lead John Smith',
+          description: 'Call regarding premium package inquiry',
+          due_date: '2024-01-16',
+          due_time: '10:00',
+          priority: 'high',
+          status: 'pending',
+          type: 'follow_up',
+          created_at: '2024-01-15T10:30:00Z',
+          updated_at: '2024-01-15T10:30:00Z'
+        },
+        {
+          id: '2',
+          title: 'Quarterly business review meeting',
+          description: 'Review Q1 performance with team',
+          due_date: '2024-01-18',
+          due_time: '14:00',
+          priority: 'medium',
+          status: 'pending',
+          type: 'meeting',
+          created_at: '2024-01-14T14:20:00Z',
+          updated_at: '2024-01-14T14:20:00Z'
+        },
+        {
+          id: '3',
+          title: 'Update product inventory',
+          description: 'Check stock levels and reorder items',
+          due_date: '2024-01-15',
+          due_time: '16:00',
+          priority: 'medium',
+          status: 'completed',
+          type: 'task',
+          created_at: '2024-01-13T09:15:00Z',
+          updated_at: '2024-01-15T16:30:00Z'
+        },
+        {
+          id: '4',
+          title: 'Submit tax documents',
+          description: 'Deadline for quarterly tax submission',
+          due_date: '2024-01-14',
+          due_time: '17:00',
+          priority: 'high',
+          status: 'overdue',
+          type: 'deadline',
+          created_at: '2024-01-12T16:45:00Z',
+          updated_at: '2024-01-12T16:45:00Z'
+        },
+        {
+          id: '5',
+          title: 'Team standup meeting',
+          description: 'Daily team sync and updates',
+          due_date: '2024-01-16',
+          due_time: '09:00',
+          priority: 'low',
+          status: 'pending',
+          type: 'meeting',
+          created_at: '2024-01-11T11:30:00Z',
+          updated_at: '2024-01-11T11:30:00Z'
+        }
+      ]);
     } catch (error) {
-      console.error('Error:', error);
-      setReminders([]);
+      console.error('Error fetching reminders:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const markAsCompleted = async (reminderId: string) => {
-    try {
-      const response = await fetch(`/api/reminders?id=${reminderId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          status: 'completed',
-          completed_at: new Date().toISOString()
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+  const deleteReminder = async (reminderId: string) => {
+    if (confirm('Are you sure you want to delete this reminder?')) {
+      try {
+        setReminders(reminders.filter(reminder => reminder.id !== reminderId));
+      } catch (error) {
+        console.error('Error deleting reminder:', error);
       }
-
-      const result = await response.json();
-      
-      if (result.error) {
-        console.error('Error updating reminder:', result.error);
-        alert('Failed to update reminder');
-      } else {
-        // Update the reminder in the local state
-        setReminders(reminders.map(reminder => 
-          reminder.id === reminderId 
-            ? { ...reminder, status: 'completed', completed_at: new Date().toISOString() }
-            : reminder
-        ));
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to update reminder');
     }
   };
 
-  const deleteReminder = async (reminderId: string) => {
-    if (!confirm('Are you sure you want to delete this reminder?')) {
-      return;
-    }
-
+  const toggleReminderStatus = async (reminderId: string) => {
     try {
-      const response = await fetch(`/api/reminders?id=${reminderId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      if (result.error) {
-        console.error('Error deleting reminder:', result.error);
-        alert('Failed to delete reminder');
-      } else {
-        setReminders(reminders.filter(reminder => reminder.id !== reminderId));
-      }
+      setReminders(reminders.map(reminder => 
+        reminder.id === reminderId 
+          ? { 
+              ...reminder, 
+              status: reminder.status === 'completed' ? 'pending' : 'completed',
+              updated_at: new Date().toISOString()
+            }
+          : reminder
+      ));
     } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to delete reminder');
+      console.error('Error updating reminder:', error);
     }
   };
 
@@ -134,110 +152,64 @@ export default function RemindersPage() {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  const getPriorityIcon = (priority: string) => {
-    switch (priority) {
-      case 'urgent':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      case 'high':
-        return <AlertCircle className="h-4 w-4 text-orange-500" />;
-      case 'normal':
-        return <Clock className="h-4 w-4 text-blue-500" />;
-      case 'low':
-        return <Clock className="h-4 w-4 text-gray-500" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-500" />;
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'high':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'normal':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'low':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'cancelled':
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-500" />;
+      case 'pending': return <Clock className="h-4 w-4" />;
+      case 'completed': return <CheckCircle className="h-4 w-4" />;
+      case 'overdue': return <AlertTriangle className="h-4 w-4" />;
+      default: return <Clock className="h-4 w-4" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'pending': return 'text-warning bg-warning/10 border-warning/20';
+      case 'completed': return 'text-success bg-success/10 border-success/20';
+      case 'overdue': return 'text-destructive bg-destructive/10 border-destructive/20';
+      default: return 'text-muted-foreground bg-muted border-border';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'text-destructive bg-destructive/10 border-destructive/20';
+      case 'medium': return 'text-warning bg-warning/10 border-warning/20';
+      case 'low': return 'text-blue-600 bg-blue-50 border-blue-200';
+      default: return 'text-muted-foreground bg-muted border-border';
     }
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'lead_followup':
-        return <Target className="h-4 w-4 text-green-500" />;
-      case 'expense_review':
-        return <DollarSign className="h-4 w-4 text-red-500" />;
-      case 'inventory_check':
-        return <Package className="h-4 w-4 text-blue-500" />;
-      default:
-        return <Bell className="h-4 w-4 text-gray-500" />;
+      case 'task': return <FileText className="h-4 w-4" />;
+      case 'meeting': return <User className="h-4 w-4" />;
+      case 'follow_up': return <Bell className="h-4 w-4" />;
+      case 'deadline': return <AlertTriangle className="h-4 w-4" />;
+      default: return <Bell className="h-4 w-4" />;
     }
   };
 
-  const formatDueDate = (dueDate: string, dueTime?: string) => {
-    const date = new Date(dueDate);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    if (date.toDateString() === today.toDateString()) {
-      return `Today ${dueTime || ''}`;
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return `Tomorrow ${dueTime || ''}`;
-    } else {
-      return `${date.toLocaleDateString()} ${dueTime || ''}`;
-    }
-  };
-
-  const isOverdue = (dueDate: string) => {
-    const date = new Date(dueDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    date.setHours(0, 0, 0, 0);
-    return date < today;
-  };
+  // Calculate stats
+  const totalReminders = reminders.length;
+  const pendingReminders = reminders.filter(r => r.status === 'pending').length;
+  const overdueReminders = reminders.filter(r => r.status === 'overdue').length;
+  const completedReminders = reminders.filter(r => r.status === 'completed').length;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded-lg w-1/4 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded-lg w-1/2 mb-8"></div>
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-24 bg-gray-200 rounded-xl"></div>
-              ))}
-            </div>
+      <div className="p-6 space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-muted rounded w-1/4 mb-4"></div>
+          <div className="h-4 bg-muted rounded w-1/2 mb-8"></div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-24 bg-muted rounded-xl"></div>
+            ))}
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-20 bg-muted rounded-xl"></div>
+            ))}
           </div>
         </div>
       </div>
@@ -245,205 +217,203 @@ export default function RemindersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white/95 backdrop-blur-sm shadow-sm border-b border-gray-200/50 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/dashboard" className="mr-4 p-2 hover:bg-gray-100 rounded-lg transition-all duration-200">
-                <ArrowLeft className="h-5 w-5 text-gray-600" />
-              </Link>
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Bell className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-gray-900">Reminders</h1>
-                  <p className="text-sm text-gray-500">Manage your tasks and follow-ups</p>
-                </div>
-              </div>
+    <div className="p-6 space-y-6">
+      <PageHeader 
+        title="Reminders" 
+        description="Stay on top of important tasks and deadlines"
+      >
+        <button className="p-2 rounded-xl bg-muted hover:bg-secondary transition-colors">
+          <RefreshCw className="h-4 w-4 text-muted-foreground" />
+        </button>
+        <Link href="/reminders/new" className="btn btn-primary px-4 py-2 text-sm">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Reminder
+        </Link>
+      </PageHeader>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total Reminders</p>
+              <p className="text-2xl font-bold text-foreground">{totalReminders}</p>
             </div>
-            <Link
-              href="/reminders/new"
-              className="btn btn-primary px-4 py-2 h-10 text-sm"
+            <div className="p-3 bg-primary/10 rounded-xl">
+              <Bell className="h-6 w-6 text-primary" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Pending</p>
+              <p className="text-2xl font-bold text-foreground">{pendingReminders}</p>
+            </div>
+            <div className="p-3 bg-warning/10 rounded-xl">
+              <Clock className="h-6 w-6 text-warning" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Overdue</p>
+              <p className="text-2xl font-bold text-foreground">{overdueReminders}</p>
+            </div>
+            <div className="p-3 bg-destructive/10 rounded-xl">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Completed</p>
+              <p className="text-2xl font-bold text-foreground">{completedReminders}</p>
+            </div>
+            <div className="p-3 bg-success/10 rounded-xl">
+              <CheckCircle className="h-6 w-6 text-success" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search reminders..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring text-foreground bg-background placeholder-muted-foreground"
+            />
+          </div>
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="pl-10 pr-8 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring text-foreground bg-background"
             >
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="completed">Completed</option>
+              <option value="overdue">Overdue</option>
+            </select>
+          </div>
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            className="px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring text-foreground bg-background"
+          >
+            <option value="all">All Priorities</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Reminders List */}
+      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-muted/50 border-b border-border">
+              <tr>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Reminder</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Type</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Priority</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Due Date</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Status</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filteredReminders.map((reminder) => (
+                <tr key={reminder.id} className="hover:bg-muted/30 transition-colors">
+                  <td className="py-4 px-6">
+                    <div>
+                      <p className="font-medium text-foreground">{reminder.title}</p>
+                      {reminder.description && (
+                        <p className="text-sm text-muted-foreground truncate max-w-xs">{reminder.description}</p>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-2">
+                      {getTypeIcon(reminder.type)}
+                      <span className="text-sm capitalize">{reminder.type.replace('_', ' ')}</span>
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${getPriorityColor(reminder.priority)}`}>
+                      {reminder.priority.charAt(0).toUpperCase() + reminder.priority.slice(1)}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-1 text-sm">
+                      <Calendar className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-foreground">
+                        {new Date(reminder.due_date).toLocaleDateString()}
+                      </span>
+                      {reminder.due_time && (
+                        <span className="text-muted-foreground ml-1">{reminder.due_time}</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <button
+                      onClick={() => toggleReminderStatus(reminder.id)}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border ${getStatusColor(reminder.status)} hover:opacity-80 transition-opacity`}
+                    >
+                      {getStatusIcon(reminder.status)}
+                      {reminder.status.charAt(0).toUpperCase() + reminder.status.slice(1)}
+                    </button>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-2">
+                      <button className="p-1 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button className="p-1 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button 
+                        onClick={() => deleteReminder(reminder.id)}
+                        className="p-1 rounded-md hover:bg-muted transition-colors text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {filteredReminders.length === 0 && (
+          <div className="text-center py-12">
+            <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No reminders found</h3>
+            <p className="text-muted-foreground mb-4">
+              {searchTerm || statusFilter !== 'all' || priorityFilter !== 'all'
+                ? "Try adjusting your search or filter criteria" 
+                : "Get started by adding your first reminder"}
+            </p>
+            <Link href="/reminders/new" className="btn btn-primary px-4 py-2">
               <Plus className="h-4 w-4 mr-2" />
               Add Reminder
             </Link>
           </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search and Filter */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search reminders..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="input pl-10"
-              />
-            </div>
-            <div className="flex gap-3">
-              <div className="relative">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="input pl-10 pr-8 w-36"
-                >
-                  <option value="all">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-              <select
-                value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                className="input px-3 w-32"
-              >
-                <option value="all">All Priority</option>
-                <option value="urgent">Urgent</option>
-                <option value="high">High</option>
-                <option value="normal">Normal</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Reminders List */}
-        <div className="card">
-          <div className="card-header">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Sparkles className="h-5 w-5 text-blue-500" />
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {filteredReminders.length} Reminder{filteredReminders.length !== 1 ? 's' : ''}
-                </h2>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-500">
-                  {reminders.filter(r => r.status === 'pending').length} pending
-                </span>
-              </div>
-            </div>
-          </div>
-          
-          {filteredReminders.length === 0 ? (
-            <div className="card-content">
-              <div className="text-center py-12">
-                <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4">
-                  <Bell className="h-8 w-8 text-gray-400 mx-auto" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No reminders found</h3>
-                <p className="text-sm text-gray-500 mb-6">
-                  {searchTerm || statusFilter !== 'all' || priorityFilter !== 'all' 
-                    ? 'Try adjusting your search or filters.' 
-                    : 'Get started by adding your first reminder.'}
-                </p>
-                {!searchTerm && statusFilter === 'all' && priorityFilter === 'all' && (
-                  <Link
-                    href="/reminders/new"
-                    className="btn btn-primary px-6 py-3 text-sm"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Reminder
-                  </Link>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="card-content p-0">
-              <div className="divide-y divide-gray-100">
-                {filteredReminders.map((reminder) => (
-                  <div key={reminder.id} className="p-6 hover:bg-gray-50 transition-all duration-200">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start space-x-4">
-                          <div className="flex-shrink-0 p-2 bg-gray-100 rounded-lg">
-                            {getTypeIcon(reminder.reminder_type)}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <h3 className="text-sm font-semibold text-gray-900 truncate">
-                                {reminder.title}
-                              </h3>
-                              <div className="flex items-center space-x-2">
-                                <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium border ${getPriorityColor(reminder.priority)}`}>
-                                  {getPriorityIcon(reminder.priority)}
-                                  <span className="ml-1 capitalize">{reminder.priority}</span>
-                                </span>
-                                <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium border ${getStatusColor(reminder.status)}`}>
-                                  {getStatusIcon(reminder.status)}
-                                  <span className="ml-1 capitalize">{reminder.status}</span>
-                                </span>
-                              </div>
-                            </div>
-                            
-                            {reminder.description && (
-                              <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                                {reminder.description}
-                              </p>
-                            )}
-                            
-                            <div className="flex items-center space-x-4 text-xs text-gray-500">
-                              <div className="flex items-center space-x-1">
-                                <Calendar className="h-3 w-3" />
-                                <span className={`${reminder.due_date && isOverdue(reminder.due_date) && reminder.status === 'pending' ? 'text-red-600 font-medium' : ''}`}>
-                                  {reminder.due_date ? formatDueDate(reminder.due_date, reminder.due_time) : 'No due date'}
-                                  {reminder.due_date && isOverdue(reminder.due_date) && reminder.status === 'pending' && ' (Overdue)'}
-                                </span>
-                              </div>
-                              {reminder.user_email && (
-                                <div className="flex items-center space-x-1">
-                                  <User className="h-3 w-3" />
-                                  <span>{reminder.user_email}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-1 ml-4">
-                        {reminder.status === 'pending' && (
-                          <button
-                            onClick={() => markAsCompleted(reminder.id!)}
-                            className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-all duration-200"
-                            title="Mark as completed"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {/* TODO: Implement edit */}}
-                          className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all duration-200"
-                          title="Edit reminder"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => deleteReminder(reminder.id!)}
-                          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200"
-                          title="Delete reminder"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );

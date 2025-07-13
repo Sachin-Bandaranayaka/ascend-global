@@ -34,8 +34,6 @@ import { DashboardStats } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
 import { ActivityLogger, ActivityLog, Reminder, Notification, UserSession } from '@/lib/activity-logger';
-import Sidebar from '@/components/sidebar';
-import TopHeader from '@/components/top-header';
 
 // Simple Chart Components
 const ProgressRing = ({ percentage, size = 120, strokeWidth = 8, color = 'primary' }: {
@@ -492,13 +490,7 @@ export default function DashboardPage() {
   const isProfitable = profit > 0;
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <Sidebar />
-      
-      <div className="flex-1 lg:ml-72">
-        <TopHeader />
-        
-        <main className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex justify-between items-center">
             <div>
@@ -764,8 +756,6 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        </main>
-      </div>
     </div>
   );
 }

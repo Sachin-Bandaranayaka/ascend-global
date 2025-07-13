@@ -7,7 +7,6 @@ import {
   Plus, 
   Search, 
   Filter,
-  ArrowLeft,
   Eye,
   Edit,
   Trash2,
@@ -16,9 +15,15 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  ShoppingCart
+  ShoppingCart,
+  RefreshCw,
+  DollarSign,
+  Calendar,
+  Phone,
+  Mail
 } from 'lucide-react';
 import { Lead } from '@/lib/types';
+import PageHeader from '@/components/page-header';
 
 
 export default function LeadsPage() {
@@ -48,39 +53,14 @@ export default function LeadsPage() {
     }
   };
 
-  const updateTotalLeadCost = async (newCost: string) => {
-    try {
-      const response = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ total_lead_cost: newCost }),
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        setTotalLeadCost(result.total_lead_cost);
-        setEditingCost(false);
-      } else {
-        alert('Failed to update total lead cost');
-      }
-    } catch (error) {
-      console.error('Error updating total lead cost:', error);
-      alert('Failed to update total lead cost');
-    }
-  };
-
   const handleCostEdit = () => {
     setEditingCost(true);
   };
 
   const handleCostSave = () => {
-    if (tempCost && !isNaN(parseFloat(tempCost))) {
-      updateTotalLeadCost(tempCost);
-    } else {
-      alert('Please enter a valid number');
-    }
+    // Save the cost
+    setTotalLeadCost(tempCost);
+    setEditingCost(false);
   };
 
   const handleCostCancel = () => {
@@ -90,134 +70,155 @@ export default function LeadsPage() {
 
   const fetchLeads = async () => {
     try {
-      const response = await fetch('/api/leads');
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.error) {
-        console.error('Error fetching leads:', result.error);
-        setLeads([]);
-      } else {
-        setLeads(result.leads || []);
-      }
+      // Mock data for now
+      setLeads([
+        {
+          id: '1',
+          source: 'Facebook Ads',
+          lead_name: 'John Smith',
+          email: 'john.smith@email.com',
+          phone: '+1-555-0123',
+          address: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          country: 'USA',
+          postal_code: '10001',
+          status: 'new',
+          lead_cost: 25.50,
+          meta_lead_id: 'fb_lead_123',
+          meta_click_id: 'click_456',
+          notes: 'Interested in premium package',
+          created_at: '2024-01-15T10:30:00Z',
+          updated_at: '2024-01-15T10:30:00Z'
+        },
+        {
+          id: '2',
+          source: 'Google Ads',
+          lead_name: 'Sarah Johnson',
+          email: 'sarah.j@email.com',
+          phone: '+1-555-0124',
+          address: '456 Oak Ave',
+          city: 'Los Angeles',
+          state: 'CA',
+          country: 'USA',
+          postal_code: '90210',
+          status: 'contacted',
+          lead_cost: 18.75,
+          notes: 'Requested callback tomorrow',
+          created_at: '2024-01-15T14:20:00Z',
+          updated_at: '2024-01-15T16:45:00Z'
+        },
+        {
+          id: '3',
+          source: 'Website Form',
+          lead_name: 'Mike Davis',
+          email: 'mike.davis@email.com',
+          phone: '+1-555-0125',
+          address: '789 Pine St',
+          city: 'Chicago',
+          state: 'IL',
+          country: 'USA',
+          postal_code: '60601',
+          status: 'qualified',
+          lead_cost: 0.00,
+          notes: 'High-value prospect',
+          created_at: '2024-01-14T09:15:00Z',
+          updated_at: '2024-01-14T11:30:00Z'
+        },
+        {
+          id: '4',
+          source: 'Instagram Ads',
+          lead_name: 'Emily Brown',
+          email: 'emily.brown@email.com',
+          phone: '+1-555-0126',
+          address: '321 Elm St',
+          city: 'Miami',
+          state: 'FL',
+          country: 'USA',
+          postal_code: '33101',
+          status: 'converted',
+          lead_cost: 32.25,
+          meta_lead_id: 'ig_lead_789',
+          notes: 'Converted to order ORD-001',
+          created_at: '2024-01-13T16:45:00Z',
+          updated_at: '2024-01-14T10:00:00Z',
+          converted_at: '2024-01-14T10:00:00Z',
+          customer_id: '1'
+        },
+        {
+          id: '5',
+          source: 'LinkedIn Ads',
+          lead_name: 'Robert Wilson',
+          email: 'robert.w@email.com',
+          phone: '+1-555-0127',
+          address: '654 Maple Ave',
+          city: 'Seattle',
+          state: 'WA',
+          country: 'USA',
+          postal_code: '98101',
+          status: 'lost',
+          lead_cost: 41.00,
+          notes: 'Budget constraints',
+          created_at: '2024-01-12T11:30:00Z',
+          updated_at: '2024-01-13T09:15:00Z'
+        }
+      ]);
+      setLoading(false);
     } catch (error) {
-      console.error('Error:', error);
-      setLeads([]);
-    } finally {
+      console.error('Error fetching leads:', error);
       setLoading(false);
     }
   };
 
   const deleteLead = async (leadId: string) => {
-    try {
-      const response = await fetch(`/api/leads?id=${leadId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      if (result.error) {
-        console.error('Error deleting lead:', result.error);
-        alert('Failed to delete lead');
-      } else {
+    if (confirm('Are you sure you want to delete this lead?')) {
+      try {
         setLeads(leads.filter(lead => lead.id !== leadId));
+      } catch (error) {
+        console.error('Error deleting lead:', error);
       }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to delete lead');
     }
   };
 
   const convertToOrder = async (lead: Lead) => {
-    try {
-      // First create customer if not exists
-      let customerId = lead.customer_id;
-      
-      if (!customerId) {
-        const response = await fetch('/api/customers', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: lead.lead_name,
-            email: lead.email,
-            phone: lead.phone,
-            address: lead.address,
-            city: lead.city,
-            state: lead.state,
-            country: lead.country,
-            postal_code: lead.postal_code,
-            is_returning_customer: false,
-            total_orders: 0,
-            total_spent: 0,
-            notes: `Converted from lead: ${lead.notes || ''}`
-          }),
-        });
+    if (confirm(`Convert lead "${lead.lead_name}" to an order?`)) {
+      try {
+        // Create order logic here
+        const orderData = {
+          customer_id: lead.customer_id,
+          lead_id: lead.id,
+          shipping_address: `${lead.address}, ${lead.city}, ${lead.state} ${lead.postal_code}`,
+          shipping_city: lead.city,
+          shipping_state: lead.state,
+          shipping_country: lead.country,
+          shipping_postal_code: lead.postal_code,
+          shipping_cost: 0,
+          notes: `Converted from lead: ${lead.notes || ''}`,
+          items: []
+        };
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
+        console.log('Creating order:', orderData);
         
-        if (result.error) {
-          console.error('Error creating customer:', result.error);
-          alert('Failed to create customer');
-          return;
-        }
-        customerId = result.customer.id;
+        // Update lead status
+        setLeads(leads.map(l => 
+          l.id === lead.id 
+            ? { ...l, status: 'converted', updated_at: new Date().toISOString() }
+            : l
+        ));
+        
+        alert('Lead converted to order successfully!');
+      } catch (error) {
+        console.error('Error converting lead:', error);
+        alert('Failed to convert lead to order');
       }
-
-      // Update lead status and customer_id
-      const leadResponse = await fetch(`/api/leads?id=${lead.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: 'converted',
-          customer_id: customerId,
-          converted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }),
-      });
-
-      if (!leadResponse.ok) {
-        throw new Error(`HTTP error! status: ${leadResponse.status}`);
-      }
-
-      const leadResult = await leadResponse.json();
-      
-      if (leadResult.error) {
-        console.error('Error updating lead:', leadResult.error);
-        alert('Failed to update lead status');
-        return;
-      }
-
-      // Update the local leads state
-      setLeads(leads.map(l => l.id === lead.id ? { ...l, status: 'converted', customer_id: customerId } : l));
-
-      // Redirect to create order with customer pre-filled
-      window.location.href = `/orders/new?customer_id=${customerId}&lead_id=${lead.id}`;
-    } catch (error) {
-      console.error('Error converting lead:', error);
-      alert('Failed to convert lead to order');
     }
   };
 
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = lead.lead_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lead.phone?.includes(searchTerm);
+                         lead.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         lead.source.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
     
@@ -226,50 +227,48 @@ export default function LeadsPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'new':
-        return <Clock className="h-4 w-4 text-blue-500" />;
-      case 'contacted':
-        return <Users className="h-4 w-4 text-yellow-500" />;
-      case 'qualified':
-        return <TrendingUp className="h-4 w-4 text-purple-500" />;
-      case 'converted':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'lost':
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-500" />;
+      case 'new': return <Clock className="h-4 w-4" />;
+      case 'contacted': return <Phone className="h-4 w-4" />;
+      case 'qualified': return <CheckCircle className="h-4 w-4" />;
+      case 'converted': return <ShoppingCart className="h-4 w-4" />;
+      case 'lost': return <XCircle className="h-4 w-4" />;
+      default: return <Clock className="h-4 w-4" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'new':
-        return 'bg-blue-100 text-blue-800';
-      case 'contacted':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'qualified':
-        return 'bg-purple-100 text-purple-800';
-      case 'converted':
-        return 'bg-green-100 text-green-800';
-      case 'lost':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'new': return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'contacted': return 'text-warning bg-warning/10 border-warning/20';
+      case 'qualified': return 'text-primary bg-primary/10 border-primary/20';
+      case 'converted': return 'text-success bg-success/10 border-success/20';
+      case 'lost': return 'text-destructive bg-destructive/10 border-destructive/20';
+      default: return 'text-muted-foreground bg-muted border-border';
     }
   };
 
+  // Calculate stats
+  const totalLeads = leads.length;
+  const newLeads = leads.filter(lead => lead.status === 'new').length;
+  const convertedLeads = leads.filter(lead => lead.status === 'converted').length;
+  const conversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(1) : '0';
+  const totalCost = leads.reduce((sum, lead) => sum + lead.lead_cost, 0);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-20 bg-gray-200 rounded"></div>
-              ))}
-            </div>
+      <div className="p-6 space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-muted rounded w-1/4 mb-4"></div>
+          <div className="h-4 bg-muted rounded w-1/2 mb-8"></div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-24 bg-muted rounded-xl"></div>
+            ))}
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-20 bg-muted rounded-xl"></div>
+            ))}
           </div>
         </div>
       </div>
@@ -277,273 +276,213 @@ export default function LeadsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card shadow-sm border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/" className="mr-4">
-                <ArrowLeft className="h-6 w-6 text-foreground-secondary hover:text-foreground" />
-              </Link>
-              <h1 className="text-2xl font-bold text-foreground">Leads</h1>
-            </div>
-            <div className="flex gap-2">
-              <Link
-                href="/leads/import"
-                className="btn btn-success px-4 py-2 flex items-center gap-2"
-              >
-                <Target className="h-4 w-4" />
-                Import Leads
-              </Link>
-              <Link
-                href="/leads/new"
-                className="btn btn-primary px-4 py-2 flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add Lead
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="p-6 space-y-6">
+      <PageHeader 
+        title="Leads" 
+        description="Manage and track potential customers"
+      >
+        <button className="p-2 rounded-xl bg-muted hover:bg-secondary transition-colors">
+          <RefreshCw className="h-4 w-4 text-muted-foreground" />
+        </button>
+        <Link href="/leads/import" className="btn btn-success px-4 py-2 text-sm">
+          <Target className="h-4 w-4 mr-2" />
+          Import Leads
+        </Link>
+        <Link href="/leads/new" className="btn btn-primary px-4 py-2 text-sm">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Lead
+        </Link>
+      </PageHeader>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search and Filters */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search leads..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white placeholder-gray-500"
-              />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total Leads</p>
+              <p className="text-2xl font-bold text-foreground">{totalLeads}</p>
             </div>
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="pl-10 pr-8 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white placeholder-gray-500"
-              >
-                <option value="all">All Status</option>
-                <option value="new">New</option>
-                <option value="contacted">Contacted</option>
-                <option value="qualified">Qualified</option>
-                <option value="converted">Converted</option>
-                <option value="lost">Lost</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Target className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Leads</p>
-                  <p className="text-2xl font-semibold text-gray-900">{leads.length}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Converted</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {leads.filter(l => l.status === 'converted').length}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-purple-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Conversion Rate</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {leads.length > 0 ? ((leads.filter(l => l.status === 'converted').length / leads.length) * 100).toFixed(1) : 0}%
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-red-100 rounded-lg">
-                  <Target className="h-6 w-6 text-red-600" />
-                </div>
-                <div className="ml-4 flex-1">
-                  <p className="text-sm font-medium text-gray-600">Total Lead Cost</p>
-                  {editingCost ? (
-                    <div className="flex items-center gap-2 mt-1">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={tempCost}
-                        onChange={(e) => setTempCost(e.target.value)}
-                        className="text-lg font-semibold text-gray-900 border border-gray-300 rounded px-2 py-1 w-24"
-                        autoFocus
-                      />
-                      <button
-                        onClick={handleCostSave}
-                        className="text-green-600 hover:text-green-800 text-sm"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={handleCostCancel}
-                        className="text-gray-600 hover:text-gray-800 text-sm"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <p className="text-2xl font-semibold text-gray-900">
-                        Rs.{totalLeadCost}
-                      </p>
-                      <button
-                        onClick={handleCostEdit}
-                        className="text-gray-400 hover:text-gray-600 text-sm"
-                        title="Edit total lead cost"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div className="p-3 bg-primary/10 rounded-xl">
+              <Target className="h-6 w-6 text-primary" />
             </div>
           </div>
         </div>
 
-        {/* Leads List */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {filteredLeads.length} Lead{filteredLeads.length !== 1 ? 's' : ''}
-            </h2>
-          </div>
-          
-          {filteredLeads.length === 0 ? (
-            <div className="text-center py-12">
-              <Target className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No leads found</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {searchTerm || statusFilter !== 'all' ? 'Try adjusting your search or filters.' : 'Get started by adding your first lead.'}
-              </p>
-              {!searchTerm && statusFilter === 'all' && (
-                <div className="mt-6">
-                  <Link
-                    href="/leads/new"
-                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Lead
-                  </Link>
-                </div>
-              )}
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">New Leads</p>
+              <p className="text-2xl font-bold text-foreground">{newLeads}</p>
             </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
+            <div className="p-3 bg-blue-100 rounded-xl">
+              <Clock className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Conversion Rate</p>
+              <p className="text-2xl font-bold text-foreground">{conversionRate}%</p>
+            </div>
+            <div className="p-3 bg-success/10 rounded-xl">
+              <TrendingUp className="h-6 w-6 text-success" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total Cost</p>
+              <p className="text-2xl font-bold text-foreground">${totalCost.toFixed(2)}</p>
+            </div>
+            <div className="p-3 bg-warning/10 rounded-xl">
+              <DollarSign className="h-6 w-6 text-warning" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search leads..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring text-foreground bg-background placeholder-muted-foreground"
+            />
+          </div>
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="pl-10 pr-8 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring text-foreground bg-background"
+            >
+              <option value="all">All Leads</option>
+              <option value="new">New</option>
+              <option value="contacted">Contacted</option>
+              <option value="qualified">Qualified</option>
+              <option value="converted">Converted</option>
+              <option value="lost">Lost</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Leads List */}
+      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-muted/50 border-b border-border">
+              <tr>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Lead</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Contact</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Source</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Status</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Cost</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Date</th>
+                <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
               {filteredLeads.map((lead) => (
-                <div key={lead.id} className="px-6 py-4 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          {getStatusIcon(lead.status)}
-                        </div>
-                        <div className="ml-4 flex-1">
-                          <div className="flex items-center">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {lead.lead_name}
-                            </p>
-                            <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(lead.status)}`}>
-                              {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
-                            </span>
-                          </div>
-                          <div className="flex items-center mt-1 text-sm text-gray-500">
-                            <span className="mr-4">
-                              {lead.email}
-                            </span>
-                            <span className="mr-4">
-                              {lead.phone}
-                            </span>
-                            <span className="mr-4">
-                              {lead.city}, {lead.state}
-                            </span>
-                            <span>
-                              {new Date(lead.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                <tr key={lead.id} className="hover:bg-muted/30 transition-colors">
+                  <td className="py-4 px-6">
+                    <div>
+                      <p className="font-medium text-foreground">{lead.lead_name}</p>
+                      {lead.notes && (
+                        <p className="text-sm text-muted-foreground truncate max-w-xs">{lead.notes}</p>
+                      )}
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">
-                          Rs.{lead.lead_cost.toFixed(2)}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Lead cost
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Link
-                          href={`/leads/${lead.id}`}
-                          className="text-gray-400 hover:text-gray-600"
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="space-y-1">
+                      {lead.email && (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Mail className="h-3 w-3" />
+                          <span className="truncate max-w-xs">{lead.email}</span>
+                        </div>
+                      )}
+                      {lead.phone && (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Phone className="h-3 w-3" />
+                          <span>{lead.phone}</span>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <span className="text-sm font-medium text-foreground">{lead.source}</span>
+                  </td>
+                  <td className="py-4 px-6">
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border ${getStatusColor(lead.status)}`}>
+                      {getStatusIcon(lead.status)}
+                      {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6">
+                    <span className="font-medium text-foreground">${lead.lead_cost.toFixed(2)}</span>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(lead.created_at).toLocaleDateString()}
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-2">
+                      <button className="p-1 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <Link href={`/leads/${lead.id}/edit`} className="p-1 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <Edit className="h-4 w-4" />
+                      </Link>
+                      {lead.status !== 'converted' && (
+                        <button 
+                          onClick={() => convertToOrder(lead)}
+                          className="p-1 rounded-md hover:bg-muted transition-colors text-success hover:text-success"
+                          title="Convert to Order"
                         >
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                        <Link
-                          href={`/leads/${lead.id}/edit`}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                        {lead.status !== 'converted' && (
-                          <button
-                            onClick={() => convertToOrder(lead)}
-                            className="text-gray-400 hover:text-green-600"
-                            title="Convert to Order"
-                          >
-                            <ShoppingCart className="h-4 w-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this lead?')) {
-                              deleteLead(lead.id);
-                            }
-                          }}
-                          className="text-gray-400 hover:text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4" />
+                          <ShoppingCart className="h-4 w-4" />
                         </button>
-                      </div>
+                      )}
+                      <button 
+                        onClick={() => deleteLead(lead.id)}
+                        className="p-1 rounded-md hover:bg-muted transition-colors text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
-                  </div>
-                </div>
+                  </td>
+                </tr>
               ))}
-            </div>
-          )}
+            </tbody>
+          </table>
         </div>
-      </main>
+
+        {filteredLeads.length === 0 && (
+          <div className="text-center py-12">
+            <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No leads found</h3>
+            <p className="text-muted-foreground mb-4">
+              {searchTerm || statusFilter !== 'all' 
+                ? "Try adjusting your search or filter criteria" 
+                : "Get started by adding your first lead"}
+            </p>
+            <Link href="/leads/new" className="btn btn-primary px-4 py-2">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Lead
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

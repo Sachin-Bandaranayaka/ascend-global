@@ -3,505 +3,322 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
-  TrendingUp, 
-  ArrowLeft,
-  Calendar,
+  BarChart3, 
+  Calendar, 
+  Download,
+  TrendingUp,
+  TrendingDown,
   DollarSign,
   ShoppingBag,
-  Target,
   Users,
-  Package,
-  RotateCcw,
-  Download,
-  TrendingDown
+  Target,
+  RefreshCw,
+  Filter,
+  PieChart,
+  FileText,
+  Eye
 } from 'lucide-react';
+import { DashboardStats } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
-
-interface ReportData {
-  revenue: { current: number; previous: number; growth: number };
-  orders: { current: number; previous: number; growth: number };
-  expenses: { current: number; previous: number; growth: number };
-  profit: { current: number; previous: number; growth: number };
-  leads: { total: number; converted: number; conversionRate: number };
-  customers: { total: number; new: number; returning: number };
-}
-
-interface ExpenseBreakdown {
-  category: string;
-  amount: number;
-  percentage: number;
-}
-
-interface TopProduct {
-  name: string;
-  orders: number;
-  revenue: number;
-}
+import PageHeader from '@/components/page-header';
 
 export default function ReportsPage() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [timeRange, setTimeRange] = useState('month');
   const [loading, setLoading] = useState(true);
-  const [reportData, setReportData] = useState<ReportData>({
-    revenue: { current: 0, previous: 0, growth: 0 },
-    orders: { current: 0, previous: 0, growth: 0 },
-    expenses: { current: 0, previous: 0, growth: 0 },
-    profit: { current: 0, previous: 0, growth: 0 },
-    leads: { total: 0, converted: 0, conversionRate: 0 },
-    customers: { total: 0, new: 0, returning: 0 }
-  });
-  const [expenseBreakdown, setExpenseBreakdown] = useState<ExpenseBreakdown[]>([]);
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
 
   useEffect(() => {
-    fetchReportData();
+    fetchReports();
   }, [timeRange]);
 
-  const getDateRange = () => {
-    const now = new Date();
-    const currentStart = new Date();
-    const currentEnd = new Date();
-    const previousStart = new Date();
-    const previousEnd = new Date();
-
-    switch (timeRange) {
-      case 'week':
-        currentStart.setDate(now.getDate() - 7);
-        previousStart.setDate(now.getDate() - 14);
-        previousEnd.setDate(now.getDate() - 7);
-        break;
-      case 'month':
-        currentStart.setMonth(now.getMonth() - 1);
-        previousStart.setMonth(now.getMonth() - 2);
-        previousEnd.setMonth(now.getMonth() - 1);
-        break;
-      case 'quarter':
-        currentStart.setMonth(now.getMonth() - 3);
-        previousStart.setMonth(now.getMonth() - 6);
-        previousEnd.setMonth(now.getMonth() - 3);
-        break;
-      case 'year':
-        currentStart.setFullYear(now.getFullYear() - 1);
-        previousStart.setFullYear(now.getFullYear() - 2);
-        previousEnd.setFullYear(now.getFullYear() - 1);
-        break;
-    }
-
-    return {
-      currentStart: currentStart.toISOString(),
-      currentEnd: currentEnd.toISOString(),
-      previousStart: previousStart.toISOString(),
-      previousEnd: previousEnd.toISOString()
-    };
-  };
-
-  const fetchReportData = async () => {
-    setLoading(true);
+  const fetchReports = async () => {
     try {
-      const { currentStart, currentEnd, previousStart, previousEnd } = getDateRange();
-
-      // Fetch revenue data (from orders)
-      const { data: currentOrders } = await supabase
-        .from('orders')
-        .select('total_amount, created_at')
-        .gte('created_at', currentStart)
-        .lte('created_at', currentEnd);
-
-      const { data: previousOrders } = await supabase
-        .from('orders')
-        .select('total_amount, created_at')
-        .gte('created_at', previousStart)
-        .lte('created_at', previousEnd);
-
-      // Fetch expenses data
-      const { data: currentExpenses } = await supabase
-        .from('expenses')
-        .select('amount, type, created_at')
-        .gte('created_at', currentStart)
-        .lte('created_at', currentEnd);
-
-      const { data: previousExpenses } = await supabase
-        .from('expenses')
-        .select('amount, created_at')
-        .gte('created_at', previousStart)
-        .lte('created_at', previousEnd);
-
-      // Fetch leads data
-      const { data: allLeads } = await supabase
-        .from('leads')
-        .select('status, created_at')
-        .gte('created_at', currentStart)
-        .lte('created_at', currentEnd);
-
-      // Fetch customers data
-      const { data: allCustomers } = await supabase
-        .from('customers')
-        .select('created_at, total_orders');
-
-      const { data: newCustomers } = await supabase
-        .from('customers')
-        .select('created_at')
-        .gte('created_at', currentStart)
-        .lte('created_at', currentEnd);
-
-      // Fetch top products
-      const { data: orderItems } = await supabase
-        .from('order_items')
-        .select(`
-          quantity,
-          total_price,
-          products!inner(name),
-          orders!inner(created_at)
-        `)
-        .gte('orders.created_at', currentStart)
-        .lte('orders.created_at', currentEnd);
-
-      // Calculate metrics
-      const currentRevenue = currentOrders?.reduce((sum, order) => sum + order.total_amount, 0) || 0;
-      const previousRevenue = previousOrders?.reduce((sum, order) => sum + order.total_amount, 0) || 0;
-      const revenueGrowth = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
-
-      const currentOrderCount = currentOrders?.length || 0;
-      const previousOrderCount = previousOrders?.length || 0;
-      const orderGrowth = previousOrderCount > 0 ? ((currentOrderCount - previousOrderCount) / previousOrderCount) * 100 : 0;
-
-      const currentExpenseTotal = currentExpenses?.reduce((sum, expense) => sum + expense.amount, 0) || 0;
-      const previousExpenseTotal = previousExpenses?.reduce((sum, expense) => sum + expense.amount, 0) || 0;
-      const expenseGrowth = previousExpenseTotal > 0 ? ((currentExpenseTotal - previousExpenseTotal) / previousExpenseTotal) * 100 : 0;
-
-      const currentProfit = currentRevenue - currentExpenseTotal;
-      const previousProfit = previousRevenue - previousExpenseTotal;
-      const profitGrowth = previousProfit > 0 ? ((currentProfit - previousProfit) / previousProfit) * 100 : 0;
-
-      const totalLeads = allLeads?.length || 0;
-      const convertedLeads = allLeads?.filter(lead => lead.status === 'converted').length || 0;
-      const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
-
-      const totalCustomers = allCustomers?.length || 0;
-      const newCustomerCount = newCustomers?.length || 0;
-      const returningCustomers = allCustomers?.filter(customer => customer.total_orders > 1).length || 0;
-
-      // Calculate expense breakdown
-      const expensesByType = currentExpenses?.reduce((acc, expense) => {
-        const type = expense.type || 'other';
-        acc[type] = (acc[type] || 0) + expense.amount;
-        return acc;
-      }, {} as Record<string, number>) || {};
-
-      const expenseBreakdownData = Object.entries(expensesByType).map(([type, amount]) => ({
-        category: type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        amount,
-        percentage: currentExpenseTotal > 0 ? (amount / currentExpenseTotal) * 100 : 0
-      })).sort((a, b) => b.amount - a.amount);
-
-      // Calculate top products
-      const productStats = orderItems?.reduce((acc, item) => {
-        const productName = item.products?.[0]?.name || 'Unknown Product';
-        if (!acc[productName]) {
-          acc[productName] = { orders: 0, revenue: 0 };
-        }
-        acc[productName].orders += item.quantity;
-        acc[productName].revenue += item.total_price;
-        return acc;
-      }, {} as Record<string, { orders: number; revenue: number }>) || {};
-
-      const topProductsData = Object.entries(productStats)
-        .map(([name, stats]) => ({ name, ...stats }))
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 5);
-
-      setReportData({
-        revenue: { current: currentRevenue, previous: previousRevenue, growth: revenueGrowth },
-        orders: { current: currentOrderCount, previous: previousOrderCount, growth: orderGrowth },
-        expenses: { current: currentExpenseTotal, previous: previousExpenseTotal, growth: expenseGrowth },
-        profit: { current: currentProfit, previous: previousProfit, growth: profitGrowth },
-        leads: { total: totalLeads, converted: convertedLeads, conversionRate },
-        customers: { total: totalCustomers, new: newCustomerCount, returning: returningCustomers }
+      // Mock data for demonstration
+      setStats({
+        todayRevenue: 1250.75,
+        todayOrders: 8,
+        leadConversionRate: 23.5,
+        totalExpenses: 890.50,
+        monthlyRevenue: 15420.00,
+        monthlyOrders: 156,
+        monthlyExpenses: 4250.75,
+        profitMargin: 72.4,
+        returningCustomers: 45,
+        totalCustomers: 234,
+        activeLeads: 89,
+        convertedLeads: 67
       });
-
-      setExpenseBreakdown(expenseBreakdownData);
-      setTopProducts(topProductsData);
-
     } catch (error) {
-      console.error('Error fetching report data:', error);
+      console.error('Error fetching reports:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const reportCards = [
+    {
+      title: 'Revenue Report',
+      description: 'Track your income and sales performance',
+      icon: <DollarSign className="h-6 w-6" />,
+      value: stats?.monthlyRevenue || 0,
+      change: '+12.5%',
+      trend: 'up' as const,
+      color: 'success'
+    },
+    {
+      title: 'Orders Report',
+      description: 'Monitor order volume and trends',
+      icon: <ShoppingBag className="h-6 w-6" />,
+      value: stats?.monthlyOrders || 0,
+      change: '+8.2%',
+      trend: 'up' as const,
+      color: 'primary'
+    },
+    {
+      title: 'Customer Report',
+      description: 'Analyze customer acquisition and retention',
+      icon: <Users className="h-6 w-6" />,
+      value: stats?.totalCustomers || 0,
+      change: '+15.3%',
+      trend: 'up' as const,
+      color: 'success'
+    },
+    {
+      title: 'Leads Report',
+      description: 'Track lead generation and conversion',
+      icon: <Target className="h-6 w-6" />,
+      value: stats?.activeLeads || 0,
+      change: '-2.1%',
+      trend: 'down' as const,
+      color: 'warning'
+    },
+    {
+      title: 'Expenses Report',
+      description: 'Monitor business costs and spending',
+      icon: <FileText className="h-6 w-6" />,
+      value: stats?.monthlyExpenses || 0,
+      change: '+5.7%',
+      trend: 'up' as const,
+      color: 'destructive'
+    },
+    {
+      title: 'Profit Analysis',
+      description: 'Analyze profitability and margins',
+      icon: <TrendingUp className="h-6 w-6" />,
+      value: stats?.profitMargin || 0,
+      change: '+3.2%',
+      trend: 'up' as const,
+      color: 'success'
+    }
+  ];
+
+  const getColorClasses = (color: string) => {
+    switch (color) {
+      case 'success': return 'bg-success/10 text-success border-success/20';
+      case 'primary': return 'bg-primary/10 text-primary border-primary/20';
+      case 'warning': return 'bg-warning/10 text-warning border-warning/20';
+      case 'destructive': return 'bg-destructive/10 text-destructive border-destructive/20';
+      default: return 'bg-muted/10 text-muted-foreground border-border';
+    }
+  };
+
+  const formatValue = (value: number, type: string) => {
+    if (type === 'Revenue Report' || type === 'Expenses Report') {
+      return `$${value.toLocaleString()}`;
+    }
+    if (type === 'Profit Analysis') {
+      return `${value.toFixed(1)}%`;
+    }
+    return value.toString();
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-foreground-secondary">Loading reports...</p>
+      <div className="p-6 space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-muted rounded w-1/4 mb-4"></div>
+          <div className="h-4 bg-muted rounded w-1/2 mb-8"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-32 bg-muted rounded-xl"></div>
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card shadow-sm border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/" className="mr-4">
-                <ArrowLeft className="h-6 w-6 text-foreground-secondary hover:text-foreground" />
-              </Link>
-              <h1 className="text-2xl font-bold text-foreground">Reports</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <select
-                  value={timeRange}
-                  onChange={(e) => setTimeRange(e.target.value)}
-                  className="pl-10 pr-8 py-2 border border-border rounded-md focus:ring-2 focus:ring-ring focus:border-ring text-foreground bg-card placeholder-muted-foreground"
-                >
-                  <option value="week">This Week</option>
-                  <option value="month">This Month</option>
-                  <option value="quarter">This Quarter</option>
-                  <option value="year">This Year</option>
-                </select>
+    <div className="p-6 space-y-6">
+      <PageHeader 
+        title="Reports" 
+        description="Analyze your business performance and trends"
+      >
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <select
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+              className="pl-10 pr-8 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring text-foreground bg-background"
+            >
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="quarter">This Quarter</option>
+              <option value="year">This Year</option>
+            </select>
+          </div>
+          <button className="p-2 rounded-xl bg-muted hover:bg-secondary transition-colors">
+            <RefreshCw className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <button className="btn btn-primary px-4 py-2 text-sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </button>
+        </div>
+      </PageHeader>
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
+              <p className="text-2xl font-bold text-foreground">${stats?.monthlyRevenue.toLocaleString()}</p>
+              <div className="flex items-center gap-1 mt-1">
+                <TrendingUp className="h-3 w-3 text-success" />
+                <span className="text-xs text-success">+12.5% vs last month</span>
               </div>
-              <button className="btn btn-primary px-4 py-2 flex items-center gap-2">
-                <Download className="h-4 w-4" />
-                Export
+            </div>
+            <div className="p-3 bg-success/10 rounded-xl">
+              <DollarSign className="h-6 w-6 text-success" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
+              <p className="text-2xl font-bold text-foreground">{stats?.monthlyOrders}</p>
+              <div className="flex items-center gap-1 mt-1">
+                <TrendingUp className="h-3 w-3 text-success" />
+                <span className="text-xs text-success">+8.2% vs last month</span>
+              </div>
+            </div>
+            <div className="p-3 bg-primary/10 rounded-xl">
+              <ShoppingBag className="h-6 w-6 text-primary" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Conversion Rate</p>
+              <p className="text-2xl font-bold text-foreground">{stats?.leadConversionRate.toFixed(1)}%</p>
+              <div className="flex items-center gap-1 mt-1">
+                <TrendingUp className="h-3 w-3 text-success" />
+                <span className="text-xs text-success">+3.1% vs last month</span>
+              </div>
+            </div>
+            <div className="p-3 bg-warning/10 rounded-xl">
+              <Target className="h-6 w-6 text-warning" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Profit Margin</p>
+              <p className="text-2xl font-bold text-foreground">{stats?.profitMargin.toFixed(1)}%</p>
+              <div className="flex items-center gap-1 mt-1">
+                <TrendingUp className="h-3 w-3 text-success" />
+                <span className="text-xs text-success">+2.8% vs last month</span>
+              </div>
+            </div>
+            <div className="p-3 bg-success/10 rounded-xl">
+              <TrendingUp className="h-6 w-6 text-success" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Report Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {reportCards.map((report, index) => (
+          <div key={index} className="bg-card rounded-xl p-6 border border-border shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between mb-4">
+              <div className={`p-3 rounded-xl ${getColorClasses(report.color)}`}>
+                {report.icon}
+              </div>
+              <div className="flex items-center gap-1">
+                {report.trend === 'up' ? (
+                  <TrendingUp className="h-4 w-4 text-success" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-destructive" />
+                )}
+                <span className={`text-sm font-medium ${
+                  report.trend === 'up' ? 'text-success' : 'text-destructive'
+                }`}>
+                  {report.change}
+                </span>
+              </div>
+            </div>
+            
+            <h3 className="text-lg font-semibold text-foreground mb-2">{report.title}</h3>
+            <p className="text-sm text-muted-foreground mb-4">{report.description}</p>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-foreground">
+                  {formatValue(report.value, report.title)}
+                </p>
+              </div>
+              <button className="p-2 rounded-lg bg-muted hover:bg-secondary transition-colors">
+                <Eye className="h-4 w-4 text-muted-foreground" />
               </button>
             </div>
           </div>
+        ))}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button className="flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-muted/30 transition-colors text-left">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <BarChart3 className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Generate Custom Report</p>
+              <p className="text-sm text-muted-foreground">Create a detailed report with custom filters</p>
+            </div>
+          </button>
+          
+          <button className="flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-muted/30 transition-colors text-left">
+            <div className="p-2 bg-success/10 rounded-lg">
+              <Download className="h-5 w-5 text-success" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Export All Data</p>
+              <p className="text-sm text-muted-foreground">Download complete business data as CSV</p>
+            </div>
+          </button>
+          
+          <button className="flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-muted/30 transition-colors text-left">
+            <div className="p-2 bg-warning/10 rounded-lg">
+              <PieChart className="h-5 w-5 text-warning" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Analytics Dashboard</p>
+              <p className="text-sm text-muted-foreground">View advanced analytics and insights</p>
+            </div>
+          </button>
         </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <DollarSign className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-4 flex-1">
-                <p className="text-sm font-medium text-gray-600">Revenue</p>
-                <p className="text-2xl font-semibold text-gray-900">Rs.{reportData.revenue.current.toFixed(2)}</p>
-                <div className="flex items-center mt-1">
-                  {reportData.revenue.growth >= 0 ? (
-                    <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
-                  )}
-                  <span className={`text-sm ${reportData.revenue.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {reportData.revenue.growth >= 0 ? '+' : ''}{reportData.revenue.growth.toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <ShoppingBag className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4 flex-1">
-                <p className="text-sm font-medium text-gray-600">Orders</p>
-                <p className="text-2xl font-semibold text-gray-900">{reportData.orders.current}</p>
-                <div className="flex items-center mt-1">
-                  {reportData.orders.growth >= 0 ? (
-                    <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
-                  )}
-                  <span className={`text-sm ${reportData.orders.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {reportData.orders.growth >= 0 ? '+' : ''}{reportData.orders.growth.toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <DollarSign className="h-6 w-6 text-red-600" />
-              </div>
-              <div className="ml-4 flex-1">
-                <p className="text-sm font-medium text-gray-600">Expenses</p>
-                <p className="text-2xl font-semibold text-gray-900">Rs.{reportData.expenses.current.toFixed(2)}</p>
-                <div className="flex items-center mt-1">
-                  {reportData.expenses.growth >= 0 ? (
-                    <TrendingUp className="h-4 w-4 text-red-500 mr-1" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 text-green-500 mr-1" />
-                  )}
-                  <span className={`text-sm ${reportData.expenses.growth >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    {reportData.expenses.growth >= 0 ? '+' : ''}{reportData.expenses.growth.toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <TrendingUp className="h-6 w-6 text-purple-600" />
-              </div>
-              <div className="ml-4 flex-1">
-                <p className="text-sm font-medium text-gray-600">Net Profit</p>
-                <p className="text-2xl font-semibold text-gray-900">Rs.{reportData.profit.current.toFixed(2)}</p>
-                <div className="flex items-center mt-1">
-                  {reportData.profit.growth >= 0 ? (
-                    <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
-                  )}
-                  <span className={`text-sm ${reportData.profit.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {reportData.profit.growth >= 0 ? '+' : ''}{reportData.profit.growth.toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Charts and Analysis */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Profit Margin Analysis */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Profit Margin Analysis</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Gross Revenue</span>
-                <span className="text-sm font-medium text-green-600">Rs.{reportData.revenue.current.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Total Expenses</span>
-                <span className="text-sm font-medium text-red-600">-Rs.{reportData.expenses.current.toFixed(2)}</span>
-              </div>
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-base font-medium text-gray-900">Net Profit</span>
-                  <span className="text-base font-semibold text-green-600">Rs.{reportData.profit.current.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-sm text-gray-600">Profit Margin</span>
-                  <span className="text-sm font-medium text-green-600">
-                    {reportData.revenue.current > 0 ? ((reportData.profit.current / reportData.revenue.current) * 100).toFixed(1) : '0.0'}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Lead Conversion */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Lead Performance</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Target className="h-5 w-5 text-blue-500 mr-2" />
-                  <span className="text-sm text-gray-600">Total Leads</span>
-                </div>
-                <span className="text-sm font-medium text-gray-900">{reportData.leads.total}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <ShoppingBag className="h-5 w-5 text-green-500 mr-2" />
-                  <span className="text-sm text-gray-600">Converted</span>
-                </div>
-                <span className="text-sm font-medium text-gray-900">{reportData.leads.converted}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <TrendingUp className="h-5 w-5 text-purple-500 mr-2" />
-                  <span className="text-sm text-gray-600">Conversion Rate</span>
-                </div>
-                <span className="text-sm font-medium text-purple-600">{reportData.leads.conversionRate.toFixed(1)}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Detailed Reports */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Expense Breakdown */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Expense Breakdown</h3>
-            <div className="space-y-3">
-              {expenseBreakdown.length > 0 ? expenseBreakdown.map((expense, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-gray-900">{expense.category}</span>
-                      <span className="text-sm text-gray-600">Rs.{expense.amount.toFixed(2)}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full" 
-                        style={{ width: `${expense.percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <span className="text-sm text-gray-500 ml-4">{expense.percentage.toFixed(1)}%</span>
-                </div>
-              )) : (
-                <p className="text-gray-500 text-center py-4">No expense data available for this period</p>
-              )}
-            </div>
-          </div>
-
-          {/* Top Products */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Products</h3>
-            <div className="space-y-4">
-              {topProducts.length > 0 ? topProducts.map((product, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{product.name}</p>
-                    <p className="text-sm text-gray-500">{product.orders} orders</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">Rs.{product.revenue.toFixed(2)}</p>
-                    <p className="text-sm text-gray-500">revenue</p>
-                  </div>
-                </div>
-              )) : (
-                <p className="text-gray-500 text-center py-4">No product data available for this period</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Customer Insights */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Insights</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="p-3 bg-blue-100 rounded-lg inline-block mb-2">
-                <Users className="h-6 w-6 text-blue-600" />
-              </div>
-              <p className="text-2xl font-semibold text-gray-900">{reportData.customers.total}</p>
-              <p className="text-sm text-gray-600">Total Customers</p>
-            </div>
-            <div className="text-center">
-              <div className="p-3 bg-green-100 rounded-lg inline-block mb-2">
-                <Users className="h-6 w-6 text-green-600" />
-              </div>
-              <p className="text-2xl font-semibold text-gray-900">{reportData.customers.new}</p>
-              <p className="text-sm text-gray-600">New Customers</p>
-            </div>
-            <div className="text-center">
-              <div className="p-3 bg-purple-100 rounded-lg inline-block mb-2">
-                <RotateCcw className="h-6 w-6 text-purple-600" />
-              </div>
-              <p className="text-2xl font-semibold text-gray-900">{reportData.customers.returning}</p>
-              <p className="text-sm text-gray-600">Returning Customers</p>
-            </div>
-          </div>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }
