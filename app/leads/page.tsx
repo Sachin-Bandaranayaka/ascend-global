@@ -70,102 +70,17 @@ export default function LeadsPage() {
 
   const fetchLeads = async () => {
     try {
-      // Mock data for now
-      setLeads([
-        {
-          id: '1',
-          source: 'Facebook Ads',
-          lead_name: 'John Smith',
-          email: 'john.smith@email.com',
-          phone: '+1-555-0123',
-          address: '123 Main St',
-          city: 'New York',
-          state: 'NY',
-          country: 'USA',
-          postal_code: '10001',
-          status: 'new',
-          lead_cost: 25.50,
-          meta_lead_id: 'fb_lead_123',
-          meta_click_id: 'click_456',
-          notes: 'Interested in premium package',
-          created_at: '2024-01-15T10:30:00Z',
-          updated_at: '2024-01-15T10:30:00Z'
-        },
-        {
-          id: '2',
-          source: 'Google Ads',
-          lead_name: 'Sarah Johnson',
-          email: 'sarah.j@email.com',
-          phone: '+1-555-0124',
-          address: '456 Oak Ave',
-          city: 'Los Angeles',
-          state: 'CA',
-          country: 'USA',
-          postal_code: '90210',
-          status: 'contacted',
-          lead_cost: 18.75,
-          notes: 'Requested callback tomorrow',
-          created_at: '2024-01-15T14:20:00Z',
-          updated_at: '2024-01-15T16:45:00Z'
-        },
-        {
-          id: '3',
-          source: 'Website Form',
-          lead_name: 'Mike Davis',
-          email: 'mike.davis@email.com',
-          phone: '+1-555-0125',
-          address: '789 Pine St',
-          city: 'Chicago',
-          state: 'IL',
-          country: 'USA',
-          postal_code: '60601',
-          status: 'qualified',
-          lead_cost: 0.00,
-          notes: 'High-value prospect',
-          created_at: '2024-01-14T09:15:00Z',
-          updated_at: '2024-01-14T11:30:00Z'
-        },
-        {
-          id: '4',
-          source: 'Instagram Ads',
-          lead_name: 'Emily Brown',
-          email: 'emily.brown@email.com',
-          phone: '+1-555-0126',
-          address: '321 Elm St',
-          city: 'Miami',
-          state: 'FL',
-          country: 'USA',
-          postal_code: '33101',
-          status: 'converted',
-          lead_cost: 32.25,
-          meta_lead_id: 'ig_lead_789',
-          notes: 'Converted to order ORD-001',
-          created_at: '2024-01-13T16:45:00Z',
-          updated_at: '2024-01-14T10:00:00Z',
-          converted_at: '2024-01-14T10:00:00Z',
-          customer_id: '1'
-        },
-        {
-          id: '5',
-          source: 'LinkedIn Ads',
-          lead_name: 'Robert Wilson',
-          email: 'robert.w@email.com',
-          phone: '+1-555-0127',
-          address: '654 Maple Ave',
-          city: 'Seattle',
-          state: 'WA',
-          country: 'USA',
-          postal_code: '98101',
-          status: 'lost',
-          lead_cost: 41.00,
-          notes: 'Budget constraints',
-          created_at: '2024-01-12T11:30:00Z',
-          updated_at: '2024-01-13T09:15:00Z'
-        }
-      ]);
-      setLoading(false);
+      setLoading(true);
+      const response = await fetch('/api/leads');
+      if (!response.ok) {
+        throw new Error('Failed to fetch leads');
+      }
+      const result = await response.json();
+      setLeads(result.leads || []);
     } catch (error) {
       console.error('Error fetching leads:', error);
+      setLeads([]);
+    } finally {
       setLoading(false);
     }
   };
@@ -173,9 +88,19 @@ export default function LeadsPage() {
   const deleteLead = async (leadId: string) => {
     if (confirm('Are you sure you want to delete this lead?')) {
       try {
+        const response = await fetch(`/api/leads?id=${leadId}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to delete lead');
+        }
+        
+        // Remove the lead from the local state
         setLeads(leads.filter(lead => lead.id !== leadId));
       } catch (error) {
         console.error('Error deleting lead:', error);
+        alert('Failed to delete lead. Please try again.');
       }
     }
   };
@@ -183,33 +108,38 @@ export default function LeadsPage() {
   const convertToOrder = async (lead: Lead) => {
     if (confirm(`Convert lead "${lead.lead_name}" to an order?`)) {
       try {
-        // Create order logic here
-        const orderData = {
-          customer_id: lead.customer_id,
-          lead_id: lead.id,
-          shipping_address: `${lead.address}, ${lead.city}, ${lead.state} ${lead.postal_code}`,
-          shipping_city: lead.city,
-          shipping_state: lead.state,
-          shipping_country: lead.country,
-          shipping_postal_code: lead.postal_code,
-          shipping_cost: 0,
-          notes: `Converted from lead: ${lead.notes || ''}`,
-          items: []
-        };
+        // Update lead status to converted
+        const response = await fetch(`/api/leads?id=${lead.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            status: 'converted',
+            converted_at: new Date().toISOString(),
+          }),
+        });
 
-        console.log('Creating order:', orderData);
-        
-        // Update lead status
+        if (!response.ok) {
+          throw new Error('Failed to update lead status');
+        }
+
+        // Update the local state
         setLeads(leads.map(l => 
           l.id === lead.id 
-            ? { ...l, status: 'converted', updated_at: new Date().toISOString() }
+            ? { 
+                ...l, 
+                status: 'converted', 
+                converted_at: new Date().toISOString(),
+                updated_at: new Date().toISOString() 
+              }
             : l
         ));
         
-        alert('Lead converted to order successfully!');
+        alert('Lead converted to order successfully! You can now create the actual order from the Orders page.');
       } catch (error) {
         console.error('Error converting lead:', error);
-        alert('Failed to convert lead to order');
+        alert('Failed to convert lead to order. Please try again.');
       }
     }
   };
