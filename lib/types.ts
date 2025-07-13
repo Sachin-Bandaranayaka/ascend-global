@@ -114,10 +114,13 @@ export interface PurchaseInvoiceItem {
 
 export interface Expense {
   id: string;
-  type: 'packaging' | 'salary' | 'printing' | 'return_shipping' | 'lead_cost' | 'other';
+  category: string; // Database field
+  type?: string; // Frontend compatibility field (mapped from category)
   description: string;
   amount: number;
   expense_date: string;
+  supplier_id?: string;
+  receipt_number?: string;
   order_id?: string;
   lead_id?: string;
   receipt_url?: string;
@@ -229,10 +232,12 @@ export interface CreateOrderForm {
 }
 
 export interface CreateExpenseForm {
-  type: 'packaging' | 'salary' | 'printing' | 'return_shipping' | 'lead_cost' | 'other';
+  category: string;
   description: string;
   amount: number;
   expense_date: string;
+  supplier_id?: string;
+  receipt_number?: string;
   order_id?: string;
   lead_id?: string;
   receipt_url?: string;

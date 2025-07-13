@@ -22,7 +22,6 @@ import {
   CreditCard
 } from 'lucide-react';
 import { Expense } from '@/lib/types';
-import { supabase } from '@/lib/supabase';
 import PageHeader from '@/components/page-header';
 
 export default function ExpensesPage() {
@@ -37,75 +36,29 @@ export default function ExpensesPage() {
 
   const fetchExpenses = async () => {
     try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .order('expense_date', { ascending: false });
+      setLoading(true);
+      const response = await fetch('/api/expenses');
       
-      if (error) {
-        console.error('Error fetching expenses:', error);
-        // Fallback to mock data
-        setExpenses([
-          {
-            id: '1',
-            type: 'packaging',
-            description: 'Shipping boxes and bubble wrap',
-            amount: 45.50,
-            expense_date: '2024-01-15',
-            order_id: 'ORD-001',
-            receipt_url: '',
-            notes: 'Monthly packaging supplies',
-            created_at: '2024-01-15T10:30:00Z',
-            updated_at: '2024-01-15T10:30:00Z'
-          },
-          {
-            id: '2',
-            type: 'salary',
-            description: 'Employee salaries - January',
-            amount: 2500.00,
-            expense_date: '2024-01-01',
-            notes: 'Monthly payroll',
-            created_at: '2024-01-01T09:00:00Z',
-            updated_at: '2024-01-01T09:00:00Z'
-          },
-          {
-            id: '3',
-            type: 'lead_cost',
-            description: 'Facebook Ads campaign',
-            amount: 125.75,
-            expense_date: '2024-01-14',
-            lead_id: 'lead-123',
-            notes: 'Q1 marketing campaign',
-            created_at: '2024-01-14T14:20:00Z',
-            updated_at: '2024-01-14T14:20:00Z'
-          },
-          {
-            id: '4',
-            type: 'return_shipping',
-            description: 'Return shipping for damaged item',
-            amount: 18.00,
-            expense_date: '2024-01-13',
-            order_id: 'ORD-002',
-            notes: 'Customer return - defective product',
-            created_at: '2024-01-13T16:45:00Z',
-            updated_at: '2024-01-13T16:45:00Z'
-          },
-          {
-            id: '5',
-            type: 'other',
-            description: 'Office supplies and utilities',
-            amount: 89.25,
-            expense_date: '2024-01-12',
-            notes: 'Monthly office expenses',
-            created_at: '2024-01-12T11:30:00Z',
-            updated_at: '2024-01-12T11:30:00Z'
-          }
-        ]);
+      if (!response.ok) {
+        throw new Error('Failed to fetch expenses');
+      }
+      
+      const result = await response.json();
+      
+      if (result.error) {
+        console.error('Error fetching expenses:', result.error);
+        setExpenses([]);
       } else {
-        setExpenses(data || []);
+        // Map the database fields to frontend expected fields
+        const mappedExpenses = (result.expenses || []).map((expense: any) => ({
+          ...expense,
+          type: expense.category, // Map category to type for frontend compatibility
+        }));
+        setExpenses(mappedExpenses);
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching expenses:', error);
+      setExpenses([]);
     } finally {
       setLoading(false);
     }
@@ -114,15 +67,25 @@ export default function ExpensesPage() {
   const deleteExpense = async (expenseId: string) => {
     if (confirm('Are you sure you want to delete this expense?')) {
       try {
+        const response = await fetch(`/api/expenses?id=${expenseId}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to delete expense');
+        }
+        
+        // Remove the expense from local state
         setExpenses(expenses.filter(expense => expense.id !== expenseId));
       } catch (error) {
         console.error('Error deleting expense:', error);
+        alert('Failed to delete expense. Please try again.');
       }
     }
   };
 
   const filteredExpenses = expenses.filter(expense => {
-    const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (expense.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          expense.notes?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesType = typeFilter === 'all' || expense.type === typeFilter;
@@ -132,6 +95,22 @@ export default function ExpensesPage() {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
+      case 'Office Supplies': return <FileText className="h-4 w-4" />;
+      case 'Marketing & Advertising': return <TrendingUp className="h-4 w-4" />;
+      case 'Software & Technology': return <CreditCard className="h-4 w-4" />;
+      case 'Travel & Transportation': return <Truck className="h-4 w-4" />;
+      case 'Utilities': return <Receipt className="h-4 w-4" />;
+      case 'Rent & Facilities': return <Package className="h-4 w-4" />;
+      case 'Professional Services': return <Users className="h-4 w-4" />;
+      case 'Insurance': return <Receipt className="h-4 w-4" />;
+      case 'Equipment & Hardware': return <Package className="h-4 w-4" />;
+      case 'Inventory & Stock': return <Package className="h-4 w-4" />;
+      case 'Shipping & Logistics': return <Truck className="h-4 w-4" />;
+      case 'Training & Development': return <Users className="h-4 w-4" />;
+      case 'Legal & Compliance': return <FileText className="h-4 w-4" />;
+      case 'Banking & Finance': return <CreditCard className="h-4 w-4" />;
+      case 'Other': return <Receipt className="h-4 w-4" />;
+      // Legacy support
       case 'packaging': return <Package className="h-4 w-4" />;
       case 'salary': return <Users className="h-4 w-4" />;
       case 'printing': return <FileText className="h-4 w-4" />;
@@ -144,6 +123,22 @@ export default function ExpensesPage() {
 
   const getTypeColor = (type: string) => {
     switch (type) {
+      case 'Office Supplies': return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'Marketing & Advertising': return 'text-warning bg-warning/10 border-warning/20';
+      case 'Software & Technology': return 'text-purple-600 bg-purple-50 border-purple-200';
+      case 'Travel & Transportation': return 'text-green-600 bg-green-50 border-green-200';
+      case 'Utilities': return 'text-orange-600 bg-orange-50 border-orange-200';
+      case 'Rent & Facilities': return 'text-indigo-600 bg-indigo-50 border-indigo-200';
+      case 'Professional Services': return 'text-primary bg-primary/10 border-primary/20';
+      case 'Insurance': return 'text-teal-600 bg-teal-50 border-teal-200';
+      case 'Equipment & Hardware': return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'Inventory & Stock': return 'text-pink-600 bg-pink-50 border-pink-200';
+      case 'Shipping & Logistics': return 'text-destructive bg-destructive/10 border-destructive/20';
+      case 'Training & Development': return 'text-cyan-600 bg-cyan-50 border-cyan-200';
+      case 'Legal & Compliance': return 'text-red-600 bg-red-50 border-red-200';
+      case 'Banking & Finance': return 'text-emerald-600 bg-emerald-50 border-emerald-200';
+      case 'Other': return 'text-muted-foreground bg-muted border-border';
+      // Legacy support
       case 'packaging': return 'text-blue-600 bg-blue-50 border-blue-200';
       case 'salary': return 'text-primary bg-primary/10 border-primary/20';
       case 'printing': return 'text-purple-600 bg-purple-50 border-purple-200';
@@ -155,19 +150,21 @@ export default function ExpensesPage() {
   };
 
   // Calculate stats
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
   const thisMonthExpenses = expenses.filter(expense => {
+    if (!expense.expense_date) return false;
     const expenseDate = new Date(expense.expense_date);
     const now = new Date();
     return expenseDate.getMonth() === now.getMonth() && expenseDate.getFullYear() === now.getFullYear();
-  }).reduce((sum, expense) => sum + expense.amount, 0);
+  }).reduce((sum, expense) => sum + (expense.amount || 0), 0);
   
   const lastMonthExpenses = expenses.filter(expense => {
+    if (!expense.expense_date) return false;
     const expenseDate = new Date(expense.expense_date);
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     return expenseDate.getMonth() === lastMonth.getMonth() && expenseDate.getFullYear() === lastMonth.getFullYear();
-  }).reduce((sum, expense) => sum + expense.amount, 0);
+  }).reduce((sum, expense) => sum + (expense.amount || 0), 0);
 
   const avgExpenseAmount = expenses.length > 0 ? totalExpenses / expenses.length : 0;
   const monthlyChange = lastMonthExpenses > 0 ? ((thisMonthExpenses - lastMonthExpenses) / lastMonthExpenses) * 100 : 0;
@@ -286,13 +283,22 @@ export default function ExpensesPage() {
               onChange={(e) => setTypeFilter(e.target.value)}
               className="pl-10 pr-8 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring text-foreground bg-background"
             >
-              <option value="all">All Types</option>
-              <option value="packaging">Packaging</option>
-              <option value="salary">Salary</option>
-              <option value="printing">Printing</option>
-              <option value="return_shipping">Return Shipping</option>
-              <option value="lead_cost">Lead Cost</option>
-              <option value="other">Other</option>
+              <option value="all">All Categories</option>
+              <option value="Office Supplies">Office Supplies</option>
+              <option value="Marketing & Advertising">Marketing & Advertising</option>
+              <option value="Software & Technology">Software & Technology</option>
+              <option value="Travel & Transportation">Travel & Transportation</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Rent & Facilities">Rent & Facilities</option>
+              <option value="Professional Services">Professional Services</option>
+              <option value="Insurance">Insurance</option>
+              <option value="Equipment & Hardware">Equipment & Hardware</option>
+              <option value="Inventory & Stock">Inventory & Stock</option>
+              <option value="Shipping & Logistics">Shipping & Logistics</option>
+              <option value="Training & Development">Training & Development</option>
+              <option value="Legal & Compliance">Legal & Compliance</option>
+              <option value="Banking & Finance">Banking & Finance</option>
+              <option value="Other">Other</option>
             </select>
           </div>
         </div>
@@ -324,18 +330,18 @@ export default function ExpensesPage() {
                     </div>
                   </td>
                   <td className="py-4 px-6">
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border ${getTypeColor(expense.type)}`}>
-                      {getTypeIcon(expense.type)}
-                      {expense.type.replace('_', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border ${getTypeColor(expense.type || '')}`}>
+                      {getTypeIcon(expense.type || '')}
+                      {(expense.type || '').replace('_', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                     </span>
                   </td>
                   <td className="py-4 px-6">
-                    <span className="font-medium text-foreground">${expense.amount.toFixed(2)}</span>
+                    <span className="font-medium text-foreground">${(expense.amount || 0).toFixed(2)}</span>
                   </td>
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      {new Date(expense.expense_date).toLocaleDateString()}
+                      {expense.expense_date ? new Date(expense.expense_date).toLocaleDateString() : 'N/A'}
                     </div>
                   </td>
                   <td className="py-4 px-6">
