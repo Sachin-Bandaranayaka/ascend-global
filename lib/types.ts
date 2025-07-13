@@ -31,6 +31,8 @@ export interface Lead {
   postal_code?: string;
   status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
   lead_cost: number;
+  meta_lead_id?: string;
+  meta_click_id?: string;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -66,6 +68,7 @@ export interface Order {
   courier_service?: string;
   tracking_number?: string;
   shipping_cost: number;
+  currency?: string; // e.g., 'INR'
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -271,4 +274,13 @@ export interface CreatePurchaseInvoiceForm {
     quantity: number;
     unit_cost: number;
   }[];
+}
+
+export interface Profile {
+  id: string;
+  email: string;
+  role: 'user' | 'admin';
+  full_name?: string;
+  created_at: string;
+  updated_at: string;
 } 

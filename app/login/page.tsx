@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../hooks/use-auth';
 import { loginSchema, type LoginFormData, validateForm } from '../../lib/validations';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff, LogIn, Sparkles, Shield } from 'lucide-react';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState<LoginFormData>({ email: '', password: '' });
@@ -41,44 +41,48 @@ export default function LoginPage() {
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background-secondary to-background-tertiary flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <LogIn className="h-12 w-12 text-blue-600" />
+        <div className="flex justify-center mb-6">
+          <div className="p-4 bg-gradient-to-br from-primary to-primary-hover rounded-2xl shadow-lg">
+            <LogIn className="h-8 w-8 text-primary-foreground" />
+          </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
-          Sign in to Ascend Global
+        <h2 className="text-center text-3xl font-bold tracking-tight text-foreground mb-2">
+          Welcome back
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Access your business management dashboard
+        <p className="text-center text-sm text-foreground-secondary mb-8">
+          Sign in to your Ascend Global account
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {errors.email && (
-              <div className="text-red-600 text-sm">
-                {errors.email}
-              </div>
-            )}
-            {errors.password && (
-              <div className="text-red-600 text-sm">
-                {errors.password}
-              </div>
-            )}
-            {errors.general && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
-                {errors.general}
-              </div>
-            )}
-            
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <div className="mt-1">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="card shadow-xl">
+          <div className="card-content">
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {errors.general && (
+                <div className="p-4 bg-destructive-light border border-destructive rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <Shield className="h-4 w-4 text-destructive" />
+                    <span className="text-sm text-destructive">{errors.general}</span>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-foreground-secondary mb-2">
+                  Email address
+                </label>
                 <input
                   id="email"
                   name="email"
@@ -86,53 +90,116 @@ export default function LoginPage() {
                   autoComplete="email"
                   required
                   value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                  onChange={handleInputChange}
+                  className={`input ${errors.email ? 'border-destructive focus:border-destructive focus:ring-destructive' : ''}`}
                   placeholder="Enter your email"
                 />
+                {errors.email && (
+                  <p className="mt-1 text-sm text-destructive">{errors.email}</p>
+                )}
               </div>
-            </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  value={formData.password}
-                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                  className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 pr-10 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                  placeholder="Enter your password"
-                />
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-foreground-secondary mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    required
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className={`input pr-10 ${errors.password ? 'border-destructive focus:border-destructive focus:ring-destructive' : ''}`}
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground-secondary" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground-secondary" />
+                    )}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="mt-1 text-sm text-destructive">{errors.password}</p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    className="h-4 w-4 text-primary focus:ring-primary border-border rounded"
+                  />
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-foreground-secondary">
+                    Remember me
+                  </label>
+                </div>
+
+                <div className="text-sm">
+                  <a href="#" className="font-medium text-primary hover:text-primary-hover">
+                    Forgot your password?
+                  </a>
+                </div>
+              </div>
+
+              <div>
                 <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
+                  type="submit"
+                  disabled={loading}
+                  className="btn btn-primary w-full h-12 text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
+                  {loading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-2"></div>
+                      Signing in...
+                    </div>
                   ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-center justify-center">
+                      <LogIn className="h-5 w-5 mr-2" />
+                      Sign in
+                    </div>
                   )}
                 </button>
               </div>
-            </div>
+            </form>
 
-            <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex w-full justify-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Signing in...' : 'Sign in'}
-              </button>
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-card text-muted-foreground">New to Ascend Global?</span>
+                </div>
+              </div>
+
+              <div className="mt-6 text-center">
+                <p className="text-sm text-foreground-secondary">
+                  Don't have an account?{' '}
+                  <a href="/signup" className="font-medium text-primary hover:text-primary-hover">
+                    Contact your administrator
+                  </a>
+                </p>
+              </div>
             </div>
-          </form>
+          </div>
+        </div>
+
+        <div className="mt-8 text-center">
+          <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
+            <Sparkles className="h-4 w-4" />
+            <span>Powered by Ascend Global Business Management</span>
+          </div>
         </div>
       </div>
     </div>

@@ -37,6 +37,8 @@ CREATE TABLE leads (
   postal_code VARCHAR(20),
   status VARCHAR(50) DEFAULT 'new', -- new, contacted, qualified, converted, lost
   lead_cost DECIMAL(10,2) DEFAULT 0.00, -- Cost paid to Facebook for this lead
+  meta_lead_id VARCHAR(255), -- Facebook's lead ID for Conversions API matching
+  meta_click_id VARCHAR(255), -- Facebook's click ID for better attribution
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -192,6 +194,8 @@ CREATE INDEX idx_leads_status ON leads(status);
 CREATE INDEX idx_leads_source ON leads(source);
 CREATE INDEX idx_leads_created_at ON leads(created_at);
 CREATE INDEX idx_leads_customer_id ON leads(customer_id);
+CREATE INDEX idx_leads_meta_lead_id ON leads(meta_lead_id);
+CREATE INDEX idx_leads_meta_click_id ON leads(meta_click_id);
 
 CREATE INDEX idx_orders_customer_id ON orders(customer_id);
 CREATE INDEX idx_orders_lead_id ON orders(lead_id);

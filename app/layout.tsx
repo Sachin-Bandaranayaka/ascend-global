@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ascend Global - Business Management System",
-  description: "Comprehensive business management system for tracking leads, orders, expenses, and profitability",
+  title: "Donezo - Project Management System",
+  description: "Plan, prioritize, and accomplish your tasks with ease. Comprehensive business management system for tracking leads, orders, expenses, and profitability",
 };
 
 export default function RootLayout({
@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background`}
       >
         <ErrorBoundary>
           <AuthProvider>

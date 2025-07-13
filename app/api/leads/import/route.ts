@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { metaConversionsService } from '@/lib/services/meta-conversions.service';
 
 // Create a Supabase client with service role key for bypassing RLS
 const supabaseAdmin = createClient(
@@ -57,6 +58,8 @@ export async function POST(request: NextRequest) {
             postal_code: lead.postal_code || null,
             status: lead.status || 'new',
             lead_cost: lead.lead_cost || 0.00,
+            meta_lead_id: lead.meta_lead_id || null,
+            meta_click_id: lead.meta_click_id || null,
             notes: lead.notes || `Imported from CSV on ${new Date().toLocaleDateString()}`
           })
           .select()
@@ -66,6 +69,16 @@ export async function POST(request: NextRequest) {
           errors.push(`Failed to import ${lead.lead_name}: ${error.message}`);
         } else {
           results.push(data);
+          
+          // Send Meta conversion event for new lead
+          if (data.source === 'facebook' || data.source === 'instagram') {
+            try {
+              await metaConversionsService.sendLeadGenerated(data);
+            } catch (metaError) {
+              console.error('Meta Conversions API error for lead:', data.id, metaError);
+              // Don't fail the import if Meta API fails
+            }
+          }
         }
       } catch (error) {
         errors.push(`Failed to import ${lead.lead_name}: ${error instanceof Error ? error.message : 'Unknown error'}`);

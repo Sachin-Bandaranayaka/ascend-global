@@ -34,11 +34,8 @@ export default function NewOrderPage() {
     customer_id: '',
     lead_id: '',
     shipping_address: '',
-    shipping_city: '',
-    shipping_state: '',
-    shipping_country: 'USA',
-    shipping_postal_code: '',
-    courier_service: 'DHL',
+    shipping_country: 'Sri Lanka',
+    courier_service: 'Farda Express',
     shipping_cost: 0,
     notes: ''
   });
@@ -170,10 +167,7 @@ export default function NewOrderPage() {
         ...prev,
         customer_id: customerId,
         shipping_address: customer.address || '',
-        shipping_city: customer.city || '',
-        shipping_state: customer.state || '',
-        shipping_country: customer.country || 'USA',
-        shipping_postal_code: customer.postal_code || ''
+        shipping_country: customer.country || 'Sri Lanka'
       }));
     }
   };
@@ -186,10 +180,7 @@ export default function NewOrderPage() {
         setFormData(prev => ({
           ...prev,
           shipping_address: customer.address || '',
-          shipping_city: customer.city || '',
-          shipping_state: customer.state || '',
-          shipping_country: customer.country || 'USA',
-          shipping_postal_code: customer.postal_code || ''
+          shipping_country: customer.country || 'Sri Lanka'
         }));
       }
     }
@@ -450,34 +441,6 @@ export default function NewOrderPage() {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  City *
-                </label>
-                <input
-                  type="text"
-                  name="shipping_city"
-                  value={formData.shipping_city}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-500"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  State *
-                </label>
-                <input
-                  type="text"
-                  name="shipping_state"
-                  value={formData.shipping_state}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-500"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Country *
                 </label>
                 <select
@@ -487,25 +450,12 @@ export default function NewOrderPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-500"
                   required
                 >
+                  <option value="Sri Lanka">Sri Lanka</option>
                   <option value="USA">United States</option>
                   <option value="Canada">Canada</option>
                   <option value="UK">United Kingdom</option>
                   <option value="Australia">Australia</option>
                 </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Postal Code *
-                </label>
-                <input
-                  type="text"
-                  name="shipping_postal_code"
-                  value={formData.shipping_postal_code}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-500"
-                  required
-                />
               </div>
               
               <div>
@@ -518,6 +468,7 @@ export default function NewOrderPage() {
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-500"
                 >
+                  <option value="Farda Express">Farda Express</option>
                   <option value="DHL">DHL</option>
                   <option value="FedEx">FedEx</option>
                   <option value="UPS">UPS</option>
@@ -562,18 +513,18 @@ export default function NewOrderPage() {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
             <div className="space-y-2">
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>Rs.{orderItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toFixed(2)}</span>
+              <div className="flex justify-between text-gray-700">
+                <span className="text-gray-700">Subtotal:</span>
+                <span className="text-gray-900 font-medium">Rs.{orderItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toFixed(2)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Shipping:</span>
-                <span>Rs.{formData.shipping_cost.toFixed(2)}</span>
+              <div className="flex justify-between text-gray-700">
+                <span className="text-gray-700">Shipping:</span>
+                <span className="text-gray-900 font-medium">Rs.{formData.shipping_cost.toFixed(2)}</span>
               </div>
               <div className="border-t pt-2">
                 <div className="flex justify-between font-semibold text-lg">
-                  <span>Total:</span>
-                  <span>Rs.{calculateTotal().toFixed(2)}</span>
+                  <span className="text-gray-800">Total:</span>
+                  <span className="text-gray-900">Rs.{calculateTotal().toFixed(2)}</span>
                 </div>
               </div>
             </div>

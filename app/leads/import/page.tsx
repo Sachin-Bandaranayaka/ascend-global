@@ -253,7 +253,7 @@ export default function ImportLeadsPage() {
             <button
               onClick={handleImport}
               disabled={importing}
-              className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full btn btn-primary py-3 px-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {importing ? (
                 <>

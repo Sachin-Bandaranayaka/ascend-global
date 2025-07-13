@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { metaConversionsService } from '@/lib/services/meta-conversions.service';
 
 // Create a Supabase client with service role key for bypassing RLS
 const supabaseAdmin = createClient(
@@ -109,6 +110,21 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Get the current lead data to check for status changes
+    const { data: currentLead, error: fetchError } = await supabaseAdmin
+      .from('leads')
+      .select('*')
+      .eq('id', leadId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching current lead:', fetchError);
+      return NextResponse.json(
+        { error: 'Failed to fetch lead' },
+        { status: 500 }
+      );
+    }
+
     const { data, error } = await supabaseAdmin
       .from('leads')
       .update({
@@ -125,6 +141,29 @@ export async function PUT(request: NextRequest) {
         { error: 'Failed to update lead' },
         { status: 500 }
       );
+    }
+
+    // Send Meta conversion event if status changed
+    if (currentLead.status !== body.status && body.status) {
+      try {
+        switch (body.status) {
+          case 'contacted':
+            await metaConversionsService.sendLeadContacted(data);
+            break;
+          case 'qualified':
+            await metaConversionsService.sendLeadQualified(data);
+            break;
+          case 'converted':
+            await metaConversionsService.sendLeadConverted(data);
+            break;
+          case 'lost':
+            await metaConversionsService.sendLeadLost(data);
+            break;
+        }
+      } catch (metaError) {
+        console.error('Meta Conversions API error:', metaError);
+        // Don't fail the update if Meta API fails
+      }
     }
 
     return NextResponse.json({ lead: data });

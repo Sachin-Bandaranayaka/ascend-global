@@ -15,73 +15,241 @@ import {
   Download,
   TrendingDown
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+
+interface ReportData {
+  revenue: { current: number; previous: number; growth: number };
+  orders: { current: number; previous: number; growth: number };
+  expenses: { current: number; previous: number; growth: number };
+  profit: { current: number; previous: number; growth: number };
+  leads: { total: number; converted: number; conversionRate: number };
+  customers: { total: number; new: number; returning: number };
+}
+
+interface ExpenseBreakdown {
+  category: string;
+  amount: number;
+  percentage: number;
+}
+
+interface TopProduct {
+  name: string;
+  orders: number;
+  revenue: number;
+}
 
 export default function ReportsPage() {
   const [timeRange, setTimeRange] = useState('month');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [reportData, setReportData] = useState<ReportData>({
+    revenue: { current: 0, previous: 0, growth: 0 },
+    orders: { current: 0, previous: 0, growth: 0 },
+    expenses: { current: 0, previous: 0, growth: 0 },
+    profit: { current: 0, previous: 0, growth: 0 },
+    leads: { total: 0, converted: 0, conversionRate: 0 },
+    customers: { total: 0, new: 0, returning: 0 }
+  });
+  const [expenseBreakdown, setExpenseBreakdown] = useState<ExpenseBreakdown[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
 
-  // Mock data for reports
-  const reportData = {
-    revenue: {
-      current: 25670.00,
-      previous: 21450.00,
-      growth: 19.7
-    },
-    orders: {
-      current: 145,
-      previous: 128,
-      growth: 13.3
-    },
-    expenses: {
-      current: 12500.00,
-      previous: 11200.00,
-      growth: 11.6
-    },
-    profit: {
-      current: 13170.00,
-      previous: 10250.00,
-      growth: 28.5
-    },
-    leads: {
-      total: 156,
-      converted: 24,
-      conversionRate: 15.4
-    },
-    customers: {
-      total: 127,
-      new: 23,
-      returning: 45
+  useEffect(() => {
+    fetchReportData();
+  }, [timeRange]);
+
+  const getDateRange = () => {
+    const now = new Date();
+    const currentStart = new Date();
+    const currentEnd = new Date();
+    const previousStart = new Date();
+    const previousEnd = new Date();
+
+    switch (timeRange) {
+      case 'week':
+        currentStart.setDate(now.getDate() - 7);
+        previousStart.setDate(now.getDate() - 14);
+        previousEnd.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        currentStart.setMonth(now.getMonth() - 1);
+        previousStart.setMonth(now.getMonth() - 2);
+        previousEnd.setMonth(now.getMonth() - 1);
+        break;
+      case 'quarter':
+        currentStart.setMonth(now.getMonth() - 3);
+        previousStart.setMonth(now.getMonth() - 6);
+        previousEnd.setMonth(now.getMonth() - 3);
+        break;
+      case 'year':
+        currentStart.setFullYear(now.getFullYear() - 1);
+        previousStart.setFullYear(now.getFullYear() - 2);
+        previousEnd.setFullYear(now.getFullYear() - 1);
+        break;
+    }
+
+    return {
+      currentStart: currentStart.toISOString(),
+      currentEnd: currentEnd.toISOString(),
+      previousStart: previousStart.toISOString(),
+      previousEnd: previousEnd.toISOString()
+    };
+  };
+
+  const fetchReportData = async () => {
+    setLoading(true);
+    try {
+      const { currentStart, currentEnd, previousStart, previousEnd } = getDateRange();
+
+      // Fetch revenue data (from orders)
+      const { data: currentOrders } = await supabase
+        .from('orders')
+        .select('total_amount, created_at')
+        .gte('created_at', currentStart)
+        .lte('created_at', currentEnd);
+
+      const { data: previousOrders } = await supabase
+        .from('orders')
+        .select('total_amount, created_at')
+        .gte('created_at', previousStart)
+        .lte('created_at', previousEnd);
+
+      // Fetch expenses data
+      const { data: currentExpenses } = await supabase
+        .from('expenses')
+        .select('amount, type, created_at')
+        .gte('created_at', currentStart)
+        .lte('created_at', currentEnd);
+
+      const { data: previousExpenses } = await supabase
+        .from('expenses')
+        .select('amount, created_at')
+        .gte('created_at', previousStart)
+        .lte('created_at', previousEnd);
+
+      // Fetch leads data
+      const { data: allLeads } = await supabase
+        .from('leads')
+        .select('status, created_at')
+        .gte('created_at', currentStart)
+        .lte('created_at', currentEnd);
+
+      // Fetch customers data
+      const { data: allCustomers } = await supabase
+        .from('customers')
+        .select('created_at, total_orders');
+
+      const { data: newCustomers } = await supabase
+        .from('customers')
+        .select('created_at')
+        .gte('created_at', currentStart)
+        .lte('created_at', currentEnd);
+
+      // Fetch top products
+      const { data: orderItems } = await supabase
+        .from('order_items')
+        .select(`
+          quantity,
+          total_price,
+          products!inner(name),
+          orders!inner(created_at)
+        `)
+        .gte('orders.created_at', currentStart)
+        .lte('orders.created_at', currentEnd);
+
+      // Calculate metrics
+      const currentRevenue = currentOrders?.reduce((sum, order) => sum + order.total_amount, 0) || 0;
+      const previousRevenue = previousOrders?.reduce((sum, order) => sum + order.total_amount, 0) || 0;
+      const revenueGrowth = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
+
+      const currentOrderCount = currentOrders?.length || 0;
+      const previousOrderCount = previousOrders?.length || 0;
+      const orderGrowth = previousOrderCount > 0 ? ((currentOrderCount - previousOrderCount) / previousOrderCount) * 100 : 0;
+
+      const currentExpenseTotal = currentExpenses?.reduce((sum, expense) => sum + expense.amount, 0) || 0;
+      const previousExpenseTotal = previousExpenses?.reduce((sum, expense) => sum + expense.amount, 0) || 0;
+      const expenseGrowth = previousExpenseTotal > 0 ? ((currentExpenseTotal - previousExpenseTotal) / previousExpenseTotal) * 100 : 0;
+
+      const currentProfit = currentRevenue - currentExpenseTotal;
+      const previousProfit = previousRevenue - previousExpenseTotal;
+      const profitGrowth = previousProfit > 0 ? ((currentProfit - previousProfit) / previousProfit) * 100 : 0;
+
+      const totalLeads = allLeads?.length || 0;
+      const convertedLeads = allLeads?.filter(lead => lead.status === 'converted').length || 0;
+      const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
+
+      const totalCustomers = allCustomers?.length || 0;
+      const newCustomerCount = newCustomers?.length || 0;
+      const returningCustomers = allCustomers?.filter(customer => customer.total_orders > 1).length || 0;
+
+      // Calculate expense breakdown
+      const expensesByType = currentExpenses?.reduce((acc, expense) => {
+        const type = expense.type || 'other';
+        acc[type] = (acc[type] || 0) + expense.amount;
+        return acc;
+      }, {} as Record<string, number>) || {};
+
+      const expenseBreakdownData = Object.entries(expensesByType).map(([type, amount]) => ({
+        category: type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        amount,
+        percentage: currentExpenseTotal > 0 ? (amount / currentExpenseTotal) * 100 : 0
+      })).sort((a, b) => b.amount - a.amount);
+
+      // Calculate top products
+      const productStats = orderItems?.reduce((acc, item) => {
+        const productName = item.products?.[0]?.name || 'Unknown Product';
+        if (!acc[productName]) {
+          acc[productName] = { orders: 0, revenue: 0 };
+        }
+        acc[productName].orders += item.quantity;
+        acc[productName].revenue += item.total_price;
+        return acc;
+      }, {} as Record<string, { orders: number; revenue: number }>) || {};
+
+      const topProductsData = Object.entries(productStats)
+        .map(([name, stats]) => ({ name, ...stats }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5);
+
+      setReportData({
+        revenue: { current: currentRevenue, previous: previousRevenue, growth: revenueGrowth },
+        orders: { current: currentOrderCount, previous: previousOrderCount, growth: orderGrowth },
+        expenses: { current: currentExpenseTotal, previous: previousExpenseTotal, growth: expenseGrowth },
+        profit: { current: currentProfit, previous: previousProfit, growth: profitGrowth },
+        leads: { total: totalLeads, converted: convertedLeads, conversionRate },
+        customers: { total: totalCustomers, new: newCustomerCount, returning: returningCustomers }
+      });
+
+      setExpenseBreakdown(expenseBreakdownData);
+      setTopProducts(topProductsData);
+
+    } catch (error) {
+      console.error('Error fetching report data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const expenseBreakdown = [
-    { category: 'Lead Costs', amount: 4200.00, percentage: 33.6 },
-    { category: 'Packaging', amount: 2500.00, percentage: 20.0 },
-    { category: 'Salaries', amount: 2100.00, percentage: 16.8 },
-    { category: 'Shipping Returns', amount: 1800.00, percentage: 14.4 },
-    { category: 'Printing', amount: 1200.00, percentage: 9.6 },
-    { category: 'Other', amount: 700.00, percentage: 5.6 }
-  ];
-
-  const topProducts = [
-    { name: 'Premium Wireless Headphones', orders: 45, revenue: 4049.55 },
-    { name: 'Portable Charger', orders: 38, revenue: 1329.62 },
-    { name: 'Smartphone Case', orders: 32, revenue: 639.68 },
-    { name: 'Bluetooth Speaker', orders: 18, revenue: 1079.82 },
-    { name: 'Fitness Tracker', orders: 12, revenue: 959.88 }
-  ];
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-foreground-secondary">Loading reports...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-card shadow-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/" className="mr-4">
-                <ArrowLeft className="h-6 w-6 text-gray-600 hover:text-gray-900" />
+                <ArrowLeft className="h-6 w-6 text-foreground-secondary hover:text-foreground" />
               </Link>
-              <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+              <h1 className="text-2xl font-bold text-foreground">Reports</h1>
             </div>
             <div className="flex items-center space-x-4">
               <div className="relative">
@@ -89,7 +257,7 @@ export default function ReportsPage() {
                 <select
                   value={timeRange}
                   onChange={(e) => setTimeRange(e.target.value)}
-                  className="pl-10 pr-8 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white placeholder-gray-500"
+                  className="pl-10 pr-8 py-2 border border-border rounded-md focus:ring-2 focus:ring-ring focus:border-ring text-foreground bg-card placeholder-muted-foreground"
                 >
                   <option value="week">This Week</option>
                   <option value="month">This Month</option>
@@ -97,7 +265,7 @@ export default function ReportsPage() {
                   <option value="year">This Year</option>
                 </select>
               </div>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2">
+              <button className="btn btn-primary px-4 py-2 flex items-center gap-2">
                 <Download className="h-4 w-4" />
                 Export
               </button>
@@ -118,8 +286,14 @@ export default function ReportsPage() {
                 <p className="text-sm font-medium text-gray-600">Revenue</p>
                 <p className="text-2xl font-semibold text-gray-900">Rs.{reportData.revenue.current.toFixed(2)}</p>
                 <div className="flex items-center mt-1">
-                  <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">+{reportData.revenue.growth}%</span>
+                  {reportData.revenue.growth >= 0 ? (
+                    <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+                  ) : (
+                    <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
+                  )}
+                  <span className={`text-sm ${reportData.revenue.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {reportData.revenue.growth >= 0 ? '+' : ''}{reportData.revenue.growth.toFixed(1)}%
+                  </span>
                 </div>
               </div>
             </div>
@@ -134,8 +308,14 @@ export default function ReportsPage() {
                 <p className="text-sm font-medium text-gray-600">Orders</p>
                 <p className="text-2xl font-semibold text-gray-900">{reportData.orders.current}</p>
                 <div className="flex items-center mt-1">
-                  <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">+{reportData.orders.growth}%</span>
+                  {reportData.orders.growth >= 0 ? (
+                    <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+                  ) : (
+                    <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
+                  )}
+                  <span className={`text-sm ${reportData.orders.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {reportData.orders.growth >= 0 ? '+' : ''}{reportData.orders.growth.toFixed(1)}%
+                  </span>
                 </div>
               </div>
             </div>
@@ -150,8 +330,14 @@ export default function ReportsPage() {
                 <p className="text-sm font-medium text-gray-600">Expenses</p>
                 <p className="text-2xl font-semibold text-gray-900">Rs.{reportData.expenses.current.toFixed(2)}</p>
                 <div className="flex items-center mt-1">
-                  <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
-                  <span className="text-sm text-red-600">+{reportData.expenses.growth}%</span>
+                  {reportData.expenses.growth >= 0 ? (
+                    <TrendingUp className="h-4 w-4 text-red-500 mr-1" />
+                  ) : (
+                    <TrendingDown className="h-4 w-4 text-green-500 mr-1" />
+                  )}
+                  <span className={`text-sm ${reportData.expenses.growth >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {reportData.expenses.growth >= 0 ? '+' : ''}{reportData.expenses.growth.toFixed(1)}%
+                  </span>
                 </div>
               </div>
             </div>
@@ -166,8 +352,14 @@ export default function ReportsPage() {
                 <p className="text-sm font-medium text-gray-600">Net Profit</p>
                 <p className="text-2xl font-semibold text-gray-900">Rs.{reportData.profit.current.toFixed(2)}</p>
                 <div className="flex items-center mt-1">
-                  <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">+{reportData.profit.growth}%</span>
+                  {reportData.profit.growth >= 0 ? (
+                    <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+                  ) : (
+                    <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
+                  )}
+                  <span className={`text-sm ${reportData.profit.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {reportData.profit.growth >= 0 ? '+' : ''}{reportData.profit.growth.toFixed(1)}%
+                  </span>
                 </div>
               </div>
             </div>
@@ -196,7 +388,7 @@ export default function ReportsPage() {
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-sm text-gray-600">Profit Margin</span>
                   <span className="text-sm font-medium text-green-600">
-                    {((reportData.profit.current / reportData.revenue.current) * 100).toFixed(1)}%
+                    {reportData.revenue.current > 0 ? ((reportData.profit.current / reportData.revenue.current) * 100).toFixed(1) : '0.0'}%
                   </span>
                 </div>
               </div>
@@ -226,7 +418,7 @@ export default function ReportsPage() {
                   <TrendingUp className="h-5 w-5 text-purple-500 mr-2" />
                   <span className="text-sm text-gray-600">Conversion Rate</span>
                 </div>
-                <span className="text-sm font-medium text-purple-600">{reportData.leads.conversionRate}%</span>
+                <span className="text-sm font-medium text-purple-600">{reportData.leads.conversionRate.toFixed(1)}%</span>
               </div>
             </div>
           </div>
@@ -238,7 +430,7 @@ export default function ReportsPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Expense Breakdown</h3>
             <div className="space-y-3">
-              {expenseBreakdown.map((expense, index) => (
+              {expenseBreakdown.length > 0 ? expenseBreakdown.map((expense, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex justify-between items-center mb-1">
@@ -252,9 +444,11 @@ export default function ReportsPage() {
                       ></div>
                     </div>
                   </div>
-                  <span className="text-sm text-gray-500 ml-4">{expense.percentage}%</span>
+                  <span className="text-sm text-gray-500 ml-4">{expense.percentage.toFixed(1)}%</span>
                 </div>
-              ))}
+              )) : (
+                <p className="text-gray-500 text-center py-4">No expense data available for this period</p>
+              )}
             </div>
           </div>
 
@@ -262,7 +456,7 @@ export default function ReportsPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Products</h3>
             <div className="space-y-4">
-              {topProducts.map((product, index) => (
+              {topProducts.length > 0 ? topProducts.map((product, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">{product.name}</p>
@@ -273,7 +467,9 @@ export default function ReportsPage() {
                     <p className="text-sm text-gray-500">revenue</p>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-gray-500 text-center py-4">No product data available for this period</p>
+              )}
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@
 import { createContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { AuthService } from './services/auth.service';
+import { supabase } from '@/lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -10,6 +11,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  role: string | null;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,6 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
     // Get initial session
@@ -41,6 +44,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (session?.user) {
+      supabase.from('profiles').select('role').eq('id', session.user.id).single().then(({ data }: { data: { role: string } | null }) => {
+        setRole(data?.role || 'user');
+      });
+    }
+  }, [session]);
+
   const signIn = async (email: string, password: string) => {
     const response = await AuthService.signIn({ email, password });
     return { error: response.success ? null : { message: response.error } };
@@ -58,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     signIn,
     signOut,
+    role,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
