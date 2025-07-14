@@ -55,22 +55,25 @@ export async function middleware(req: NextRequest) {
     }
   );
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-
+  const { data: { user } } = await supabase.auth.getUser();
 
   // If user is not signed in and the current path is not login, redirect to login
-  if (!session && !req.nextUrl.pathname.startsWith('/login')) {
-
+  if (!user && !req.nextUrl.pathname.startsWith('/login')) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
   // If user is signed in and trying to access login, redirect to dashboard
-  if (session && req.nextUrl.pathname.startsWith('/login')) {
-
+  if (user && req.nextUrl.pathname.startsWith('/login')) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
+  }
+
+  // Role-based access for admin routes
+  if (user && req.nextUrl.pathname.startsWith('/admin')) {
+    const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    const role = data?.role;
+    if (role !== 'ADMIN') {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
   }
 
   return response;

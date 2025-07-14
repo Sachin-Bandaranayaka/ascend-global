@@ -29,7 +29,7 @@ export interface Lead {
   state?: string;
   country?: string;
   postal_code?: string;
-  status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+  status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost' | 'rejected' | 'unanswered';
   lead_cost: number;
   meta_lead_id?: string;
   meta_click_id?: string;
@@ -58,7 +58,7 @@ export interface Order {
   order_number: string;
   customer_id?: string;
   lead_id?: string;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'rejected' | 'unanswered' | 'confirmed';
   total_amount: number;
   shipping_address?: string;
   shipping_city?: string;
@@ -288,4 +288,4 @@ export interface Profile {
   full_name?: string;
   created_at: string;
   updated_at: string;
-} 
+}

@@ -14,6 +14,7 @@ import {
   Save
 } from 'lucide-react';
 import { Product, CreatePurchaseInvoiceForm } from '@/lib/types';
+import { supabase } from '@/lib/supabase';
 
 type PurchaseItemForm = {
   product_id: string;
@@ -128,27 +129,39 @@ export default function NewPurchaseOrderPage() {
     setSubmitting(true);
 
     try {
-      // In a real implementation, you would:
-      // 1. Create the purchase invoice in the database
-      // 2. Create the purchase invoice items
-      // 3. Update product stock quantities
-      // 4. Handle any errors
+      const total_amount = calculateTotal();
 
-      const purchaseOrder: CreatePurchaseInvoiceForm = {
-        ...formData,
-        items: purchaseItems.map(item => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-          unit_cost: item.unit_cost
-        }))
-      };
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from('purchase_orders')
+        .insert([{
+          invoice_number: formData.invoice_number,
+          supplier_name: formData.supplier_name,
+          supplier_email: formData.supplier_email,
+          supplier_phone: formData.supplier_phone,
+          invoice_date: formData.invoice_date,
+          due_date: formData.due_date,
+          notes: formData.notes,
+          total_amount,
+          status: 'pending'
+        }])
+        .select()
+        .single();
 
-      console.log('Purchase Order Data:', purchaseOrder);
+      if (invoiceError) throw invoiceError;
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const itemsToInsert = purchaseItems.map(item => ({
+        purchase_order_id: invoiceData.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_cost: item.unit_cost
+      }));
 
-      // Redirect to purchase orders page
+      const { error: itemsError } = await supabase
+        .from('purchase_order_items')
+        .insert(itemsToInsert);
+
+      if (itemsError) throw itemsError;
+
       router.push('/purchase-orders');
     } catch (error) {
       console.error('Error creating purchase order:', error);

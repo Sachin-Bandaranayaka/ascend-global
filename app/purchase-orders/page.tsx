@@ -23,8 +23,10 @@ import {
 import { PurchaseInvoice } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import PageHeader from '@/components/page-header';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function PurchaseOrdersPage() {
+  const { user, role } = useAuth();
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseInvoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -37,82 +39,80 @@ export default function PurchaseOrdersPage() {
   const fetchPurchaseOrders = async () => {
     try {
       const { data, error } = await supabase
-        .from('purchase_invoices')
+        .from('purchase_orders')
         .select('*')
         .order('invoice_date', { ascending: false });
       
-      if (error) {
-        console.error('Error fetching purchase orders:', error);
-        // Fallback to mock data
-        setPurchaseOrders([
-          {
-            id: '1',
-            invoice_number: 'PO-20240115-0001',
-            supplier_name: 'ABC Supplies Co.',
-            supplier_email: 'orders@abcsupplies.com',
-            supplier_phone: '+1-555-0100',
-            total_amount: 1250.75,
-            invoice_date: '2024-01-15',
-            due_date: '2024-02-15',
-            status: 'pending',
-            notes: 'Monthly inventory restocking',
-            created_at: '2024-01-15T10:30:00Z',
-            updated_at: '2024-01-15T10:30:00Z'
-          },
-          {
-            id: '2',
-            invoice_number: 'PO-20240114-0002',
-            supplier_name: 'XYZ Materials Ltd.',
-            supplier_email: 'billing@xyzmaterials.com',
-            supplier_phone: '+1-555-0101',
-            total_amount: 890.50,
-            invoice_date: '2024-01-14',
-            due_date: '2024-02-14',
-            status: 'paid',
-            notes: 'Raw materials for production',
-            created_at: '2024-01-14T14:20:00Z',
-            updated_at: '2024-01-14T14:20:00Z',
-            paid_at: '2024-01-16T09:30:00Z'
-          },
-          {
-            id: '3',
-            invoice_number: 'PO-20240113-0003',
-            supplier_name: 'Global Packaging Inc.',
-            supplier_email: 'sales@globalpackaging.com',
-            supplier_phone: '+1-555-0102',
-            total_amount: 345.25,
-            invoice_date: '2024-01-13',
-            due_date: '2024-01-28',
-            status: 'overdue',
-            notes: 'Packaging materials - urgent',
-            created_at: '2024-01-13T09:15:00Z',
-            updated_at: '2024-01-13T09:15:00Z'
-          },
-          {
-            id: '4',
-            invoice_number: 'PO-20240112-0004',
-            supplier_name: 'Tech Solutions Pro',
-            supplier_email: 'support@techsolutions.com',
-            supplier_phone: '+1-555-0103',
-            total_amount: 2100.00,
-            invoice_date: '2024-01-12',
-            due_date: '2024-02-12',
-            status: 'paid',
-            notes: 'Software licenses and equipment',
-            created_at: '2024-01-12T16:45:00Z',
-            updated_at: '2024-01-12T16:45:00Z',
-            paid_at: '2024-01-15T11:00:00Z'
-          }
-        ]);
-      } else {
-        setPurchaseOrders(data || []);
-      }
+      if (error) throw error;
+      setPurchaseOrders(data || []);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching purchase orders:', error);
+      // Fallback to mock data with updated statuses
+      setPurchaseOrders([
+        {
+          id: '1',
+          invoice_number: 'PO-20240115-0001',
+          supplier_name: 'ABC Supplies Co.',
+          supplier_email: 'orders@abcsupplies.com',
+          supplier_phone: '+1-555-0100',
+          total_amount: 1250.75,
+          invoice_date: '2024-01-15',
+          due_date: '2024-02-15',
+          status: 'pending',
+          notes: 'Monthly inventory restocking',
+          created_at: '2024-01-15T10:30:00Z',
+          updated_at: '2024-01-15T10:30:00Z'
+        },
+        {
+          id: '2',
+          invoice_number: 'PO-20240114-0002',
+          supplier_name: 'XYZ Materials Ltd.',
+          supplier_email: 'billing@xyzmaterials.com',
+          supplier_phone: '+1-555-0101',
+          total_amount: 890.50,
+          invoice_date: '2024-01-14',
+          due_date: '2024-02-14',
+          status: 'approved',
+          notes: 'Raw materials for production',
+          created_at: '2024-01-14T14:20:00Z',
+          updated_at: '2024-01-14T14:20:00Z',
+          approved_at: '2024-01-15T09:30:00Z',
+          approved_by: 'admin_id'
+        },
+        // Add more mock items as needed
+      ]);
     } finally {
       setLoading(false);
     }
   };
+
+  const approvePurchaseOrder = async (id: string) => {
+    if (role !== 'admin') return;
+    try {
+      const { error } = await supabase
+        .from('purchase_orders')
+        .update({
+          status: 'approved',
+          approved_by: user?.id,
+          approved_at: new Date().toISOString()
+        })
+        .eq('id', id);
+      if (error) throw error;
+      fetchPurchaseOrders(); // Refresh list
+    } catch (error) {
+      console.error('Error approving:', error);
+    }
+  };
+
+  // In the render, for each pending order, if role === 'admin', show approve button
+  // For example, in the map of filteredPurchaseOrders, add:
+  // {po.status === 'pending' && role === 'admin' && (
+  //   <button onClick={() => approvePurchaseOrder(po.id)}>Approve</button>
+  // )}
+
+  // Also update getStatusIcon and getStatusColor to include 'approved'
+  // case 'approved': return <CheckCircle className="h-4 w-4" />;
+  // color: 'text-success bg-success/10 border-success/20'
 
   const deletePurchaseOrder = async (purchaseOrderId: string) => {
     if (confirm('Are you sure you want to delete this purchase order?')) {
@@ -137,6 +137,7 @@ export default function PurchaseOrdersPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending': return <Clock className="h-4 w-4" />;
+      case 'approved': return <CheckCircle className="h-4 w-4" />;
       case 'paid': return <CheckCircle className="h-4 w-4" />;
       case 'overdue': return <AlertTriangle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
@@ -146,6 +147,7 @@ export default function PurchaseOrdersPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'text-warning bg-warning/10 border-warning/20';
+      case 'approved': return 'text-success bg-success/10 border-success/20';
       case 'paid': return 'text-success bg-success/10 border-success/20';
       case 'overdue': return 'text-destructive bg-destructive/10 border-destructive/20';
       default: return 'text-muted-foreground bg-muted border-border';
@@ -336,6 +338,14 @@ export default function PurchaseOrdersPage() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
+                      {po.status === 'pending' && role === 'admin' && (
+                        <button 
+                          onClick={() => approvePurchaseOrder(po.id)}
+                          className="p-1 rounded-md hover:bg-muted transition-colors text-success hover:text-success"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

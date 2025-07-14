@@ -137,6 +137,9 @@ export default function OrdersPage() {
       case 'shipped': return <Truck className="h-4 w-4" />;
       case 'delivered': return <CheckCircle className="h-4 w-4" />;
       case 'cancelled': return <XCircle className="h-4 w-4" />;
+      case 'rejected': return <XCircle className="h-4 w-4" />;
+      case 'unanswered': return <Clock className="h-4 w-4" />;
+      case 'confirmed': return <CheckCircle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
     }
   };
@@ -148,6 +151,9 @@ export default function OrdersPage() {
       case 'shipped': return 'text-blue-600 bg-blue-50 border-blue-200';
       case 'delivered': return 'text-success bg-success/10 border-success/20';
       case 'cancelled': return 'text-destructive bg-destructive/10 border-destructive/20';
+      case 'rejected': return 'text-destructive bg-destructive/10 border-destructive/20';
+      case 'unanswered': return 'text-warning bg-warning/10 border-warning/20';
+      case 'confirmed': return 'text-success bg-success/10 border-success/20';
       default: return 'text-muted-foreground bg-muted border-border';
     }
   };

@@ -25,6 +25,9 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
+import { 
+  Users as UsersIcon, // Rename to avoid conflict if necessary
+} from 'lucide-react';
 
 const mainMenuItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, badge: null },
@@ -44,9 +47,13 @@ const generalItems = [
   { name: 'Help', href: '/help', icon: HelpCircle, badge: null },
 ];
 
+const adminItems = [
+  { name: 'Users', href: '/admin/users', icon: UsersIcon, badge: null },
+];
+
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, signOut } = useAuth();
+  const { user, signOut, role } = useAuth();  // Added role
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const isActive = (href: string) => pathname === href;
@@ -135,6 +142,39 @@ export default function Sidebar() {
               </div>
             </div>
 
+            {/* Admin Section */}
+            {role === 'ADMIN' && (
+              <div className="py-2">
+                <div className="flex items-center justify-between px-3 mb-3">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Admin</h3>
+                  <UserCheck className="h-3 w-3 text-muted-foreground" />
+                </div>
+                <div className="space-y-1">
+                  {adminItems.map((item) => (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`group flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
+                        isActive(item.href)
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-foreground-secondary hover:bg-secondary hover:text-foreground'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <item.icon className={`mr-3 h-5 w-5 ${
+                          isActive(item.href) ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-foreground-secondary'
+                        }`} />
+                        {item.name}
+                      </div>
+                      {isActive(item.href) && (
+                        <ChevronRight className="h-4 w-4 text-primary-foreground" />
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* General Section */}
             <div className="py-2">
               <div className="flex items-center justify-between px-3 mb-3">
@@ -205,4 +245,4 @@ export default function Sidebar() {
       )}
     </>
   );
-} 
+}

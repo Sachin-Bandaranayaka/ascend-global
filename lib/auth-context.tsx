@@ -46,7 +46,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (session?.user) {
-      supabase.from('profiles').select('role').eq('id', session.user.id).single().then(({ data }: { data: { role: string } | null }) => {
+      supabase.from('profiles').select('role').eq('id', session.user.id).single().then(({ data, error }) => {
+        if (error) console.error('Error fetching role:', error);
+        console.log('Fetched role:', data?.role);
         setRole(data?.role || 'user');
       });
     }

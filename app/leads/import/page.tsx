@@ -6,17 +6,32 @@ import { ArrowLeft, Upload, FileText, CheckCircle, AlertCircle, Download } from 
 import { supabase } from '@/lib/supabase';
 import { Lead } from '@/lib/types';
 
+const csvLeadKeys = [
+  'Full Name',
+  'Email',
+  'Phone Number',
+  'Street Address',
+  'Ad Name',
+  'Campaign Name',
+  'Form Name',
+  'ID',
+  'Created Time',
+  'Platform',
+  'Lead Status'
+] as const;
+
 interface CSVLead {
-  id: string;
-  created_time: string;
-  full_name: string;
-  phone_number: string;
-  street_address: string;
-  lead_status: string;
-  ad_name?: string;
-  campaign_name?: string;
-  form_name?: string;
-  platform?: string;
+  'Full Name': string;
+  'Email': string;
+  'Phone Number': string;
+  'Street Address': string;
+  'Ad Name': string;
+  'Campaign Name': string;
+  'Form Name': string;
+  'ID': string;
+  'Created Time': string;
+  'Platform': string;
+  'Lead Status': string;
 }
 
 export default function ImportLeadsPage() {
@@ -31,36 +46,32 @@ export default function ImportLeadsPage() {
   const [showPreview, setShowPreview] = useState(false);
 
   const parseCSV = (csvText: string): CSVLead[] => {
-    const lines = csvText.split('\n').filter(line => line.trim());
-    if (lines.length < 2) return [];
+  const lines = csvText.split('\n');
+  if (lines.length === 0) return [];
 
-    const headers = lines[0].split('\t').map(h => h.trim());
-    const data: CSVLead[] = [];
+  const headers = lines[0].split(',').map(h => h.trim());
+  const leads: CSVLead[] = [];
 
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split('\t');
-      if (values.length >= headers.length) {
-        const lead: CSVLead = {
-          id: values[0]?.replace(/[^\w\d]/g, '') || '',
-          created_time: values[1] || '',
-          full_name: values[12]?.replace(/"/g, '') || '',
-          phone_number: values[13]?.replace(/[^\d+]/g, '') || '',
-          street_address: values[14]?.replace(/"/g, '') || '',
-          lead_status: values[15] || 'new',
-          ad_name: values[3] || '',
-          campaign_name: values[7] || '',
-          form_name: values[9]?.replace(/"/g, '') || '',
-          platform: values[11] || 'facebook'
-        };
-        
-        if (lead.full_name && lead.phone_number) {
-          data.push(lead);
-        }
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    const values = line.split(',').map(v => v.trim());
+    const lead: Partial<CSVLead> = {};
+
+    headers.forEach((header, index) => {
+      if (csvLeadKeys.includes(header as typeof csvLeadKeys[number])) {
+        lead[header as keyof CSVLead] = values[index] || '';
       }
-    }
+    });
 
-    return data;
-  };
+    if (lead['Full Name'] && lead['Phone Number']) {
+      leads.push(lead as CSVLead);
+    }
+  }
+
+  return leads;
+};
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -75,19 +86,19 @@ export default function ImportLeadsPage() {
     setShowPreview(true);
   };
 
-  const convertToLead = (csvLead: CSVLead): Omit<Lead, 'id'> => {
-    return {
-      source: csvLead.platform || 'facebook',
-      lead_name: csvLead.full_name,
-      phone: csvLead.phone_number,
-      address: csvLead.street_address,
-      status: csvLead.lead_status === 'complete' ? 'new' : 'new',
-      lead_cost: 25.00, // Default cost, can be customized
-      notes: `Imported from ${csvLead.form_name || 'CSV'} - Campaign: ${csvLead.campaign_name || 'Unknown'}`,
-      created_at: csvLead.created_time || new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
+  const convertToLead = (csvLead: CSVLead): Omit<Lead, 'id' | 'created_at' | 'updated_at'> => {
+  return {
+    source: csvLead['Platform'] || 'facebook',
+    lead_name: csvLead['Full Name'],
+    email: csvLead['Email'],
+    phone: csvLead['Phone Number'],
+    address: csvLead['Street Address'],
+    status: (csvLead['Lead Status'] || 'new') as Lead['status'],
+    lead_cost: 25.00, // Default cost, can be customized
+    notes: `Imported from ${csvLead['Form Name'] || 'CSV'} - Campaign: ${csvLead['Campaign Name'] || 'Unknown'} - Ad: ${csvLead['Ad Name'] || 'Unknown'}` ,
+    meta_lead_id: csvLead['ID']
   };
+};
 
   const handleImport = async () => {
     if (!file) return;
@@ -140,16 +151,16 @@ export default function ImportLeadsPage() {
 
   const downloadSampleCSV = () => {
     const sampleData = [
-      'id\tcreated_time\tad_id\tad_name\tadset_id\tadset_name\tcampaign_id\tcampaign_name\tform_id\tform_name\tis_organic\tplatform\tfull_name\tphone_number\tstreet_address\tlead_status',
-      'l:123456789\t2025-01-15T10:00:00+05:30\tag:123\tKojic\tas:123\tKojic\tc:123\tKojic\tf:123\tKojic Soap\tfalse\tfb\tJohn Doe\t+94771234567\t123 Main Street\tcomplete',
-      'l:987654321\t2025-01-15T11:00:00+05:30\tag:123\tKojic\tas:123\tKojic\tc:123\tKojic\tf:123\tKojic Soap\tfalse\tfb\tJane Smith\t+94779876543\t456 Oak Avenue\tcomplete'
+      'Full Name,Email,Phone Number,Street Address,Ad Name,Campaign Name,Form Name,ID,Created Time,Platform,Lead Status',
+      'John Doe,john@example.com,+94771234567,123 Main Street,Kojic,Kojic,Kojic Soap,123456789,2025-01-15T10:00:00+05:30,fb,complete',
+      'Jane Smith,jane@example.com,+94779876543,456 Oak Avenue,Kojic,Kojic,Kojic Soap,987654321,2025-01-15T11:00:00+05:30,fb,complete'
     ].join('\n');
 
     const blob = new Blob([sampleData], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'sample-leads.csv';
+    a.download = 'sample-facebook-leads.csv';
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -230,15 +241,15 @@ export default function ImportLeadsPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {previewData.map((lead, index) => (
-                    <tr key={index}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{lead.full_name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{lead.phone_number}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{lead.street_address}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{lead.lead_status}</td>
-                    </tr>
-                  ))}
-                </tbody>
+  {previewData.map((lead, index) => (
+    <tr key={index}>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{lead['Full Name']}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{lead['Phone Number']}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{lead['Street Address']}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{lead['Lead Status']}</td>
+    </tr>
+  ))}
+</tbody>
               </table>
             </div>
             <p className="text-sm text-gray-500 mt-2">

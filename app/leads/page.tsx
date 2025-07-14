@@ -162,6 +162,8 @@ export default function LeadsPage() {
       case 'qualified': return <CheckCircle className="h-4 w-4" />;
       case 'converted': return <ShoppingCart className="h-4 w-4" />;
       case 'lost': return <XCircle className="h-4 w-4" />;
+      case 'rejected': return <XCircle className="h-4 w-4" />;
+      case 'unanswered': return <Phone className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
     }
   };
@@ -169,11 +171,13 @@ export default function LeadsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'new': return 'text-blue-600 bg-blue-50 border-blue-200';
-      case 'contacted': return 'text-warning bg-warning/10 border-warning/20';
-      case 'qualified': return 'text-primary bg-primary/10 border-primary/20';
-      case 'converted': return 'text-success bg-success/10 border-success/20';
-      case 'lost': return 'text-destructive bg-destructive/10 border-destructive/20';
-      default: return 'text-muted-foreground bg-muted border-border';
+    case 'contacted': return 'text-warning bg-warning/10 border-warning/20';
+    case 'qualified': return 'text-primary bg-primary/10 border-primary/20';
+    case 'converted': return 'text-success bg-success/10 border-success/20';
+    case 'lost': return 'text-destructive bg-destructive/10 border-destructive/20';
+    case 'rejected': return 'text-destructive bg-destructive/10 border-destructive/20';
+    case 'unanswered': return 'text-warning bg-warning/10 border-warning/20';
+    default: return 'text-muted-foreground bg-muted border-border';
     }
   };
 
@@ -301,6 +305,8 @@ export default function LeadsPage() {
               <option value="qualified">Qualified</option>
               <option value="converted">Converted</option>
               <option value="lost">Lost</option>
+              <option value="rejected">Rejected</option>
+              <option value="unanswered">Unanswered</option>
             </select>
           </div>
         </div>
