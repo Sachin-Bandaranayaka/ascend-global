@@ -1,34 +1,102 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { withAuth, AuthenticatedRequest } from '@/lib/middleware/auth';
+import { rateLimit } from '@/lib/middleware/rate-limit';
+import { validateInput, validatePagination, validateSortOrder, validateSortField, expenseSchemas } from '@/lib/utils/validation';
+import { withCache, cacheKeys, cacheTtl, cacheInvalidation } from '@/lib/utils/cache';
+import { config } from '@/lib/config';
 
 const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  config.NEXT_PUBLIC_SUPABASE_URL,
+  config.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// GET /api/expenses - Fetch all expenses
-export async function GET() {
+// GET /api/expenses - Fetch expenses with authentication, caching, and pagination
+export const GET = rateLimit('general')(withAuth(async (request: AuthenticatedRequest) => {
   try {
-    const { data: expenses, error } = await supabaseAdmin
-      .from('expenses')
-      .select(`
-        *,
-        suppliers (
-          id,
-          name
-        )
-      `)
-      .order('created_at', { ascending: false });
+    const { searchParams } = new URL(request.url);
+    const expenseId = searchParams.get('id');
 
-    if (error) {
-      console.error('Error fetching expenses:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch expenses' },
-        { status: 500 }
+    if (expenseId) {
+      // Fetch single expense with caching
+      const cacheKey = cacheKeys.expense(expenseId);
+      
+      const expense = await withCache(cacheKey, async () => {
+        const { data, error } = await supabaseAdmin
+          .from('expenses')
+          .select(`
+            *,
+            suppliers (
+              id,
+              name
+            )
+          `)
+          .eq('id', expenseId)
+          .single();
+
+        if (error) {
+          throw new Error('Expense not found');
+        }
+
+        return data;
+      }, cacheTtl.medium);
+
+      return NextResponse.json({ expense });
+    } else {
+      // Fetch expenses with pagination, sorting, and caching
+      const { page, limit } = validatePagination(searchParams);
+      const sortField = validateSortField(
+        searchParams.get('sort'), 
+        ['date', 'amount', 'expense_type', 'created_at']
       );
-    }
+      const sortOrder = validateSortOrder(searchParams.get('order'));
+      const expenseType = searchParams.get('type');
+      
+      const cacheKey = cacheKeys.expenses(page, limit, `${sortField}:${sortOrder}:${expenseType || 'all'}`);
+      
+      const result = await withCache(cacheKey, async () => {
+        const offset = (page - 1) * limit;
+        
+        // Build query
+        let query = supabaseAdmin
+          .from('expenses')
+          .select(`
+            *,
+            suppliers (
+              id,
+              name
+            )
+          `, { count: 'exact' });
+        
+        // Apply filters
+        if (expenseType) {
+          query = query.eq('expense_type', expenseType);
+        }
+        
+        // Apply sorting and pagination
+        query = query
+          .order(sortField, { ascending: sortOrder === 'asc' })
+          .range(offset, offset + limit - 1);
 
-    return NextResponse.json({ expenses });
+        const { data, error, count } = await query;
+
+        if (error) {
+          throw new Error('Failed to fetch expenses');
+        }
+
+        return {
+          expenses: data,
+          pagination: {
+            page,
+            limit,
+            total: count || 0,
+            totalPages: Math.ceil((count || 0) / limit)
+          }
+        };
+      }, cacheTtl.short);
+
+      return NextResponse.json(result);
+    }
   } catch (error) {
     console.error('Error in GET /api/expenses:', error);
     return NextResponse.json(
@@ -36,7 +104,7 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+}));
 
 // POST /api/expenses - Create a new expense
 export async function POST(request: NextRequest) {
