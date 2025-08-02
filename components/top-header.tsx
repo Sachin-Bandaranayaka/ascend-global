@@ -1,140 +1,183 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Bell, Mail, ChevronDown, User, Settings, LogOut, Sparkles } from 'lucide-react';
+import { Search, Bell, MessageSquare, Settings, User, Plus, Calendar, FileText, Users } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
 import { ActivityLogger, Notification } from '../lib/activity-logger';
+import { supabase } from '@/lib/supabase';
+import { debounce } from 'lodash';
+import Link from 'next/link';
+
+interface Customer {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface Order {
+  id: string;
+  order_number: string;
+  status: string;
+}
+
+interface Lead {
+  id: string;
+  lead_name: string;
+  email: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  sku: string;
+}
+
+interface SearchResults {
+  customers: Customer[];
+  orders: Order[];
+  leads: Lead[];
+  products: Product[];
+}
 
 export default function TopHeader() {
   const { user, signOut } = useAuth();
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResults>({
+    customers: [],
+    orders: [],
+    leads: [],
+    products: []
+  });
+  const [showSearchResults, setShowSearchResults] = useState(false);
+
+  const performSearch = debounce(async (term: string) => {
+    if (!term) {
+      setSearchResults({ customers: [], orders: [], leads: [], products: [] });
+      return;
+    }
+
+    try {
+      const [customersRes, ordersRes, leadsRes, productsRes] = await Promise.all([
+        supabase
+          .from('customers')
+          .select('id, name, email')
+          .ilike('name', `%${term}%`)
+          .limit(5),
+        supabase
+          .from('orders')
+          .select('id, order_number, status')
+          .ilike('order_number', `%${term}%`)
+          .limit(5),
+        supabase
+          .from('leads')
+          .select('id, lead_name, email')
+          .ilike('lead_name', `%${term}%`)
+          .limit(5),
+        supabase
+          .from('products')
+          .select('id, name, sku')
+          .ilike('name', `%${term}%`)
+          .limit(5)
+      ]);
+
+      setSearchResults({
+        customers: customersRes.data || [],
+        orders: ordersRes.data || [],
+        leads: leadsRes.data || [],
+        products: productsRes.data || []
+      });
+    } catch (error) {
+      console.error('Search error:', error);
+    }
+  }, 300);
 
   useEffect(() => {
-    if (user?.email) {
-      fetchNotifications();
-      fetchUnreadCount();
-    }
-  }, [user]);
+    performSearch(searchTerm);
+  }, [searchTerm]);
 
-  const fetchNotifications = async () => {
-    if (!user?.email) return;
-    
+  useEffect(() => {
+    const loadNotifications = async () => {
+  try {
+    const notifications = await ActivityLogger.getNotifications(user?.email || '');
+    setNotifications(notifications);
+  } catch (error) {
+    console.error('Error loading notifications:', error);
+    const sampleNotifications = [
+  { id: '1', title: 'New Order', message: 'You have a new order #1234', created_at: new Date().toISOString(), is_read: false, type: 'system', category: 'order' },
+  { id: '2', title: 'Low Stock', message: 'Product XYZ is low on stock', created_at: new Date().toISOString(), is_read: false, type: 'alert', category: 'inventory' },
+];
+    setNotifications(sampleNotifications as Notification[]);
+  }
+};
+
+    loadNotifications();
+  }, []);
+
+  const handleSignOut = async () => {
     try {
-      const notifications = await ActivityLogger.getNotifications(user.email, 5);
-      setNotifications(notifications);
+      await signOut();
     } catch (error) {
-      console.error('Error fetching notifications:', error);
-      // Generate sample notifications if table doesn't exist yet
-      const sampleNotifications: Notification[] = [
-        {
-          id: '1',
-          title: 'New order received',
-          message: 'A new order has been placed and requires processing',
-          type: 'info',
-          category: 'order',
-          is_read: false,
-          user_email: user?.email || 'admin@example.com',
-          created_at: new Date().toISOString()
-        },
-        {
-          id: '2',
-          title: 'Lead converted',
-          message: 'A Facebook lead has been successfully converted to a customer',
-          type: 'success',
-          category: 'lead',
-          is_read: false,
-          user_email: user?.email || 'admin@example.com',
-          created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: '3',
-          title: 'Low stock alert',
-          message: 'Some products are running low on stock and need restocking',
-          type: 'warning',
-          category: 'system',
-          is_read: false,
-          user_email: user?.email || 'admin@example.com',
-          created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
-        }
-      ];
-      setNotifications(sampleNotifications);
+      console.error('Error signing out:', error);
     }
   };
 
-  const fetchUnreadCount = async () => {
-    if (!user?.email) return;
-    
+  const markNotificationAsRead = async (id: string) => {
     try {
-      const count = await ActivityLogger.getUnreadNotificationCount(user.email);
-      setUnreadCount(count);
-    } catch (error) {
-      console.error('Error fetching unread count:', error);
-      setUnreadCount(3); // Fallback count
-    }
-  };
-
-  const handleNotificationClick = async (notificationId: string) => {
-    try {
-      await ActivityLogger.markNotificationAsRead(notificationId);
-      // Update local state
-      setNotifications(notifications.map(n => 
-        n.id === notificationId ? { ...n, is_read: true } : n
-      ));
-      setUnreadCount(Math.max(0, unreadCount - 1));
+      await ActivityLogger.markNotificationAsRead(id);
+      setNotifications(prev => prev.filter(n => n.id !== id));
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    setShowUserMenu(false);
-  };
-
-  const getNotificationColor = (type: string) => {
-    switch (type) {
-      case 'success': return 'bg-success';
-      case 'warning': return 'bg-warning';
-      case 'error': return 'bg-destructive';
-      default: return 'bg-primary';
-    }
-  };
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'success': return '✓';
-      case 'warning': return '⚠';
-      case 'error': return '✕';
-      default: return 'ℹ';
-    }
-  };
-
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return `${Math.floor(diffInMinutes / 1440)}d ago`;
-  };
-
   return (
     <header className="bg-card/95 backdrop-blur-sm border-b border-border h-16 flex items-center justify-between px-6 sticky top-0 z-30">
       {/* Search */}
-      <div className="flex-1 max-w-lg">
+      <div className="flex-1 max-w-lg relative">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search orders, customers, leads..."
             className="w-full pl-10 pr-4 py-2.5 text-sm bg-muted border border-border rounded-xl focus:ring-2 focus:ring-ring focus:border-ring transition-all duration-200 placeholder:text-muted-foreground"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onFocus={() => searchTerm && setShowSearchResults(true)}
+            onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
           />
         </div>
+        {showSearchResults && (
+          <div className="absolute left-0 right-0 mt-2 bg-card rounded-xl shadow-lg border border-border z-50 max-h-96 overflow-y-auto">
+            {Object.entries(searchResults).map(([category, items]) => (
+              items.length > 0 && (
+                <div key={category} className="p-3 border-b border-border last:border-b-0">
+                  <h4 className="text-sm font-semibold text-foreground mb-2 capitalize">{category}</h4>
+                  {items.map((item: Customer | Order | Lead | Product) => (
+                    <Link
+                      key={item.id}
+                      href={`/${category}/${item.id}`}
+                      className="block p-2 hover:bg-muted rounded-lg text-sm text-foreground-secondary"
+                    >
+                      {category === 'customers' && `${(item as Customer).name} (${(item as Customer).email})`}
+                      {category === 'orders' && `Order #${(item as Order).order_number} - ${(item as Order).status}`}
+                      {category === 'leads' && `${(item as Lead).lead_name} (${(item as Lead).email})`}
+                      {category === 'products' && `${(item as Product).name} (SKU: ${(item as Product).sku})`}
+                    </Link>
+                  ))}
+                </div>
+              )
+            ))}
+            {Object.values(searchResults).every(items => items.length === 0) && (
+              <div className="p-4 text-center text-muted-foreground text-sm">
+                No results found
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Right side */}
@@ -142,7 +185,13 @@ export default function TopHeader() {
         {/* Quick Actions */}
         <div className="hidden md:flex items-center space-x-2">
           <button className="p-2 text-muted-foreground hover:text-foreground-secondary hover:bg-muted rounded-lg transition-all duration-200">
-            <Sparkles className="h-5 w-5" />
+            <Plus className="h-4 w-4" />
+          </button>
+          <button className="p-2 text-muted-foreground hover:text-foreground-secondary hover:bg-muted rounded-lg transition-all duration-200">
+            <Calendar className="h-4 w-4" />
+          </button>
+          <button className="p-2 text-muted-foreground hover:text-foreground-secondary hover:bg-muted rounded-lg transition-all duration-200">
+            <FileText className="h-4 w-4" />
           </button>
         </div>
 
@@ -152,126 +201,97 @@ export default function TopHeader() {
             onClick={() => setShowNotifications(!showNotifications)}
             className="p-2 text-muted-foreground hover:text-foreground-secondary hover:bg-muted rounded-lg transition-all duration-200 relative"
           >
-            <Bell className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-5 w-5 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center font-medium">
-                {unreadCount > 9 ? '9+' : unreadCount}
+            <Bell className="h-4 w-4" />
+            {notifications.length > 0 && (
+              <span className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full text-xs flex items-center justify-center text-destructive-foreground">
+                {notifications.length}
               </span>
             )}
           </button>
-          
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-card rounded-xl shadow-lg border border-border z-50 animate-slide-in-from-top">
+            <div className="absolute right-0 mt-2 w-80 bg-card rounded-xl shadow-lg border border-border z-50 max-h-96 overflow-y-auto">
               <div className="p-4 border-b border-border">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
-                  <span className="text-xs text-muted-foreground">{unreadCount} new</span>
+                <h3 className="font-semibold text-foreground">Notifications</h3>
+              </div>
+              {notifications.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground text-sm">
+                  No new notifications
                 </div>
-              </div>
-              <div className="max-h-96 overflow-y-auto">
-                {notifications.length > 0 ? (
-                  <div className="p-2">
-                    {notifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        onClick={() => handleNotificationClick(notification.id!)}
-                        className={`p-3 rounded-lg cursor-pointer hover:bg-muted transition-all duration-200 ${
-                          !notification.is_read ? 'bg-primary-light border-l-2 border-primary' : ''
-                        }`}
-                      >
-                        <div className="flex items-start space-x-3">
-                          <div className={`w-8 h-8 ${getNotificationColor(notification.type)} rounded-full flex items-center justify-center text-white text-sm font-medium`}>
-                            {getNotificationIcon(notification.type)}
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-foreground">{notification.title}</p>
-                            <p className="text-xs text-foreground-secondary mt-1 line-clamp-2">{notification.message}</p>
-                            <p className="text-xs text-muted-foreground mt-2">{formatTimeAgo(notification.created_at!)}</p>
-                          </div>
-                          {!notification.is_read && (
-                            <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
-                          )}
-                        </div>
+              ) : (
+                notifications.map((notification) => (
+                  <div key={notification.id} className="p-4 border-b border-border last:border-b-0 hover:bg-muted">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground">{notification.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{notification.message}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {notification.created_at ? new Date(notification.created_at).toLocaleString() : ''}
+                        </p>
                       </div>
-                    ))}
+                      <button
+                        onClick={() => notification.id && markNotificationAsRead(notification.id)}
+                        className="text-xs text-primary hover:underline ml-2"
+                      >
+                        Mark as read
+                      </button>
+                    </div>
                   </div>
-                ) : (
-                  <div className="p-8 text-center text-muted-foreground">
-                    <Bell className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm">No notifications</p>
-                  </div>
-                )}
-              </div>
-              <div className="p-3 border-t border-border bg-muted rounded-b-xl">
-                <button 
-                  onClick={() => setShowNotifications(false)}
-                  className="w-full text-center text-sm text-foreground-secondary hover:text-foreground py-1 hover:bg-secondary rounded-lg transition-all duration-200"
-                >
-                  View all notifications
-                </button>
-              </div>
+                ))
+              )}
             </div>
           )}
         </div>
 
         {/* Messages */}
-        <button className="p-2 text-muted-foreground hover:text-foreground-secondary hover:bg-muted rounded-lg transition-all duration-200">
-          <Mail className="h-5 w-5" />
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowMessages(!showMessages)}
+            className="p-2 text-muted-foreground hover:text-foreground-secondary hover:bg-muted rounded-lg transition-all duration-200"
+          >
+            <MessageSquare className="h-4 w-4" />
+          </button>
+          {showMessages && (
+            <div className="absolute right-0 mt-2 w-80 bg-card rounded-xl shadow-lg border border-border z-50">
+              <div className="p-4 border-b border-border">
+                <h3 className="font-semibold text-foreground">Messages</h3>
+              </div>
+              <div className="p-4 text-center text-muted-foreground text-sm">
+                No new messages
+              </div>
+            </div>
+          )}
+        </div>
 
-        {/* User Profile */}
+        {/* User Menu */}
         <div className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted transition-all duration-200"
+            className="flex items-center space-x-2 p-2 text-muted-foreground hover:text-foreground-secondary hover:bg-muted rounded-lg transition-all duration-200"
           >
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary-hover rounded-full flex items-center justify-center shadow-sm">
-              <span className="text-primary-foreground text-sm font-semibold">
-                {user?.email?.charAt(0).toUpperCase() || 'U'}
-              </span>
+            <div className="h-8 w-8 bg-primary rounded-full flex items-center justify-center">
+              <User className="h-4 w-4 text-primary-foreground" />
             </div>
-            <div className="text-left hidden md:block">
-              <p className="text-sm font-semibold text-foreground">
-                {user?.email?.split('@')[0] || 'User'}
-              </p>
-              <p className="text-xs text-muted-foreground">{user?.email || 'user@example.com'}</p>
-            </div>
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <span className="hidden md:block text-sm font-medium text-foreground">
+              {user?.email?.split('@')[0] || 'User'}
+            </span>
           </button>
-
           {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-56 bg-card rounded-xl shadow-lg border border-border z-50 animate-slide-in-from-top">
-              <div className="p-3 border-b border-border">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-hover rounded-full flex items-center justify-center shadow-sm">
-                    <span className="text-primary-foreground text-sm font-semibold">
-                      {user?.email?.charAt(0).toUpperCase() || 'U'}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">
-                      {user?.email?.split('@')[0] || 'User'}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">{user?.email || 'user@example.com'}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="py-2">
-                <a href="/profile" className="flex items-center px-3 py-2 text-sm text-foreground-secondary hover:bg-muted transition-all duration-200">
-                  <User className="h-4 w-4 mr-3 text-muted-foreground" />
-                  Profile
-                </a>
-                <a href="/settings" className="flex items-center px-3 py-2 text-sm text-foreground-secondary hover:bg-muted transition-all duration-200">
-                  <Settings className="h-4 w-4 mr-3 text-muted-foreground" />
-                  Settings
-                </a>
+            <div className="absolute right-0 mt-2 w-48 bg-card rounded-xl shadow-lg border border-border z-50">
+              <div className="p-2">
+                <button className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg flex items-center space-x-2">
+                  <User className="h-4 w-4" />
+                  <span>Profile</span>
+                </button>
+                <button className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg flex items-center space-x-2">
+                  <Settings className="h-4 w-4" />
+                  <span>Settings</span>
+                </button>
                 <hr className="my-2 border-border" />
-                <button 
+                <button
                   onClick={handleSignOut}
-                  className="flex items-center w-full px-3 py-2 text-sm text-destructive hover:bg-destructive-light transition-all duration-200"
+                  className="w-full text-left px-3 py-2 text-sm text-destructive hover:bg-muted rounded-lg"
                 >
-                  <LogOut className="h-4 w-4 mr-3 text-destructive" />
-                  Sign out
+                  Sign Out
                 </button>
               </div>
             </div>
@@ -280,4 +300,4 @@ export default function TopHeader() {
       </div>
     </header>
   );
-} 
+}

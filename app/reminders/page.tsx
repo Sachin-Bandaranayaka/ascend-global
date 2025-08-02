@@ -19,21 +19,13 @@ import {
   FileText
 } from 'lucide-react';
 import PageHeader from '@/components/page-header';
+import { ActivityLogger, Reminder } from '@/lib/activity-logger';
+import { useAuth } from '@/hooks/use-auth';
 
-interface Reminder {
-  id: string;
-  title: string;
-  description?: string;
-  due_date: string;
-  due_time?: string;
-  priority: 'low' | 'medium' | 'high';
-  status: 'pending' | 'completed' | 'overdue';
-  type: 'task' | 'meeting' | 'follow_up' | 'deadline';
-  created_at: string;
-  updated_at: string;
-}
+
 
 export default function RemindersPage() {
+  const { user } = useAuth();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -46,7 +38,11 @@ export default function RemindersPage() {
 
   const fetchReminders = async () => {
     try {
-      // Mock data for demonstration
+      const data = await ActivityLogger.getUpcomingReminders(50);
+      setReminders(data);
+    } catch (error) {
+      console.error('Error fetching reminders:', error);
+      // Fallback to sample data if database fetch fails
       setReminders([
         {
           id: '1',
@@ -56,9 +52,9 @@ export default function RemindersPage() {
           due_time: '10:00',
           priority: 'high',
           status: 'pending',
-          type: 'follow_up',
-          created_at: '2024-01-15T10:30:00Z',
-          updated_at: '2024-01-15T10:30:00Z'
+          reminder_type: 'lead_followup',
+          user_email: user?.email || 'admin@example.com',
+          created_at: '2024-01-15T10:30:00Z'
         },
         {
           id: '2',
@@ -66,11 +62,11 @@ export default function RemindersPage() {
           description: 'Review Q1 performance with team',
           due_date: '2024-01-18',
           due_time: '14:00',
-          priority: 'medium',
+          priority: 'normal',
           status: 'pending',
-          type: 'meeting',
-          created_at: '2024-01-14T14:20:00Z',
-          updated_at: '2024-01-14T14:20:00Z'
+          reminder_type: 'general',
+          user_email: user?.email || 'admin@example.com',
+          created_at: '2024-01-14T14:20:00Z'
         },
         {
           id: '3',
@@ -78,11 +74,11 @@ export default function RemindersPage() {
           description: 'Check stock levels and reorder items',
           due_date: '2024-01-15',
           due_time: '16:00',
-          priority: 'medium',
+          priority: 'normal',
           status: 'completed',
-          type: 'task',
-          created_at: '2024-01-13T09:15:00Z',
-          updated_at: '2024-01-15T16:30:00Z'
+          reminder_type: 'inventory_check',
+          user_email: user?.email || 'admin@example.com',
+          created_at: '2024-01-13T09:15:00Z'
         },
         {
           id: '4',
@@ -91,10 +87,10 @@ export default function RemindersPage() {
           due_date: '2024-01-14',
           due_time: '17:00',
           priority: 'high',
-          status: 'overdue',
-          type: 'deadline',
-          created_at: '2024-01-12T16:45:00Z',
-          updated_at: '2024-01-12T16:45:00Z'
+          status: 'pending',
+          reminder_type: 'expense_review',
+          user_email: user?.email || 'admin@example.com',
+          created_at: '2024-01-12T16:45:00Z'
         },
         {
           id: '5',
@@ -104,13 +100,11 @@ export default function RemindersPage() {
           due_time: '09:00',
           priority: 'low',
           status: 'pending',
-          type: 'meeting',
-          created_at: '2024-01-11T11:30:00Z',
-          updated_at: '2024-01-11T11:30:00Z'
+          reminder_type: 'general',
+          user_email: user?.email || 'admin@example.com',
+          created_at: '2024-01-11T11:30:00Z'
         }
       ]);
-    } catch (error) {
-      console.error('Error fetching reminders:', error);
     } finally {
       setLoading(false);
     }
@@ -156,7 +150,6 @@ export default function RemindersPage() {
     switch (status) {
       case 'pending': return <Clock className="h-4 w-4" />;
       case 'completed': return <CheckCircle className="h-4 w-4" />;
-      case 'overdue': return <AlertTriangle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
     }
   };
@@ -165,7 +158,6 @@ export default function RemindersPage() {
     switch (status) {
       case 'pending': return 'text-warning bg-warning/10 border-warning/20';
       case 'completed': return 'text-success bg-success/10 border-success/20';
-      case 'overdue': return 'text-destructive bg-destructive/10 border-destructive/20';
       default: return 'text-muted-foreground bg-muted border-border';
     }
   };
@@ -181,18 +173,23 @@ export default function RemindersPage() {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'task': return <FileText className="h-4 w-4" />;
-      case 'meeting': return <User className="h-4 w-4" />;
-      case 'follow_up': return <Bell className="h-4 w-4" />;
-      case 'deadline': return <AlertTriangle className="h-4 w-4" />;
-      default: return <Bell className="h-4 w-4" />;
+      case 'lead_followup': return <Bell className="h-4 w-4" />;
+      case 'expense_review': return <AlertTriangle className="h-4 w-4" />;
+      case 'inventory_check': return <FileText className="h-4 w-4" />;
+      case 'general':
+      default: return <User className="h-4 w-4" />;
     }
   };
 
   // Calculate stats
   const totalReminders = reminders.length;
   const pendingReminders = reminders.filter(r => r.status === 'pending').length;
-  const overdueReminders = reminders.filter(r => r.status === 'overdue').length;
+  const overdueReminders = reminders.filter(r => {
+    if (!r.due_date) return false;
+    const dueDate = new Date(r.due_date);
+    const today = new Date();
+    return r.status === 'pending' && dueDate < today;
+  }).length;
   const completedReminders = reminders.filter(r => r.status === 'completed').length;
 
   if (loading) {
@@ -348,8 +345,8 @@ export default function RemindersPage() {
                   </td>
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-2">
-                      {getTypeIcon(reminder.type)}
-                      <span className="text-sm capitalize">{reminder.type.replace('_', ' ')}</span>
+                      {getTypeIcon(reminder.reminder_type || 'general')}
+                      <span className="text-sm capitalize">{(reminder.reminder_type || 'general').replace('_', ' ')}</span>
                     </div>
                   </td>
                   <td className="py-4 px-6">
@@ -361,7 +358,7 @@ export default function RemindersPage() {
                     <div className="flex items-center gap-1 text-sm">
                       <Calendar className="h-3 w-3 text-muted-foreground" />
                       <span className="text-foreground">
-                        {new Date(reminder.due_date).toLocaleDateString()}
+                        {reminder.due_date ? new Date(reminder.due_date).toLocaleDateString() : 'No due date'}
                       </span>
                       {reminder.due_time && (
                         <span className="text-muted-foreground ml-1">{reminder.due_time}</span>
@@ -370,11 +367,11 @@ export default function RemindersPage() {
                   </td>
                   <td className="py-4 px-6">
                     <button
-                      onClick={() => toggleReminderStatus(reminder.id)}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border ${getStatusColor(reminder.status)} hover:opacity-80 transition-opacity`}
+                      onClick={() => toggleReminderStatus(reminder.id || '')}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border ${getStatusColor(reminder.status || 'pending')} hover:opacity-80 transition-opacity`}
                     >
-                      {getStatusIcon(reminder.status)}
-                      {reminder.status.charAt(0).toUpperCase() + reminder.status.slice(1)}
+                      {getStatusIcon(reminder.status || 'pending')}
+                      {(reminder.status || 'pending').charAt(0).toUpperCase() + (reminder.status || 'pending').slice(1)}
                     </button>
                   </td>
                   <td className="py-4 px-6">
@@ -386,7 +383,7 @@ export default function RemindersPage() {
                         <Edit className="h-4 w-4" />
                       </button>
                       <button 
-                        onClick={() => deleteReminder(reminder.id)}
+                        onClick={() => deleteReminder(reminder.id || '')}
                         className="p-1 rounded-md hover:bg-muted transition-colors text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -417,4 +414,4 @@ export default function RemindersPage() {
       </div>
     </div>
   );
-} 
+}

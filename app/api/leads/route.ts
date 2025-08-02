@@ -149,12 +149,42 @@ export async function PUT(request: NextRequest) {
         switch (body.status) {
           case 'contacted':
             await metaConversionsService.sendLeadContacted(data);
+            // Create notification for lead contacted using admin client to bypass RLS
+            const contactedNotification = {
+              title: 'Lead Contacted',
+              message: `Lead ${data.name} has been contacted.`,
+              type: 'success',
+              category: 'lead',
+              user_email: 'admin@example.com', // Adjust as needed
+              is_read: false
+            };
+            const { error: contactedNotifError } = await supabaseAdmin
+              .from('notifications')
+              .insert([contactedNotification]);
+            if (contactedNotifError) {
+              console.error('Error creating notification:', contactedNotifError);
+            }
             break;
           case 'qualified':
             await metaConversionsService.sendLeadQualified(data);
             break;
           case 'converted':
             await metaConversionsService.sendLeadConverted(data);
+            // Create notification for lead conversion using admin client to bypass RLS
+            const notification = {
+              title: 'Lead Converted',
+              message: `Lead ${data.name} has been converted to an order.`,
+              type: 'success',
+              category: 'lead',
+              user_email: 'admin@example.com', // Adjust as needed, perhaps get from session
+              is_read: false
+            };
+            const { error: notifError } = await supabaseAdmin
+              .from('notifications')
+              .insert([notification]);
+            if (notifError) {
+              console.error('Error creating notification:', notifError);
+            }
             break;
           case 'lost':
             await metaConversionsService.sendLeadLost(data);

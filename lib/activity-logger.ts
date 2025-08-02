@@ -168,10 +168,11 @@ export class ActivityLogger {
     try {
       const { data, error } = await supabase
         .from('notifications')
-        .select('*')
-        .eq('user_email', userEmail)
-        .order('created_at', { ascending: false })
-        .limit(limit);
+    .select('*')
+    .eq('user_email', userEmail)
+    .eq('is_read', false)
+    .order('created_at', { ascending: false })
+    .limit(limit);
 
       if (error) {
         console.error('Error fetching notifications:', error);
@@ -344,4 +345,4 @@ export class ActivityLogger {
       metadata: { reason: returnData.reason, refund_amount: returnData.refund_amount }
     });
   }
-} 
+}

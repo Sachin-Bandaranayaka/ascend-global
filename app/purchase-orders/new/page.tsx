@@ -132,7 +132,7 @@ export default function NewPurchaseOrderPage() {
       const total_amount = calculateTotal();
 
       const { data: invoiceData, error: invoiceError } = await supabase
-        .from('purchase_orders')
+        .from('purchase_invoices')
         .insert([{
           invoice_number: formData.invoice_number,
           supplier_name: formData.supplier_name,
@@ -150,14 +150,15 @@ export default function NewPurchaseOrderPage() {
       if (invoiceError) throw invoiceError;
 
       const itemsToInsert = purchaseItems.map(item => ({
-        purchase_order_id: invoiceData.id,
+        purchase_invoice_id: invoiceData.id,
         product_id: item.product_id,
         quantity: item.quantity,
-        unit_cost: item.unit_cost
+        unit_cost: item.unit_cost,
+        total_cost: item.quantity * item.unit_cost
       }));
 
       const { error: itemsError } = await supabase
-        .from('purchase_order_items')
+        .from('purchase_invoice_items')
         .insert(itemsToInsert);
 
       if (itemsError) throw itemsError;

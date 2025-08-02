@@ -58,8 +58,8 @@ export default function BusinessSettingsPage() {
         leadCost: businessSettings.defaultLeadCost || 0,
         lowStockThreshold: businessSettings.lowStockThreshold || 10,
         targetProfitMargin: businessSettings.targetProfitMargin || 20,
-        shippingCost: businessSettings.defaultShippingCost || 0,
-        metaConversionsEnabled: 'metaConversionsEnabled' in businessSettings ? businessSettings.metaConversionsEnabled : false
+        shippingCost: 0,
+        metaConversionsEnabled: 'metaConversionsEnabled' in businessSettings ? Boolean(businessSettings.metaConversionsEnabled) : false
       });
     } catch (error) {
       console.error('Error fetching settings:', error);

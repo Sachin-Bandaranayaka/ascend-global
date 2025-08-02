@@ -39,14 +39,26 @@ export default function PurchaseOrdersPage() {
   const fetchPurchaseOrders = async () => {
     try {
       const { data, error } = await supabase
-        .from('purchase_orders')
+        .from('purchase_invoices')
         .select('*')
         .order('invoice_date', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
       setPurchaseOrders(data || []);
     } catch (error) {
-      console.error('Error fetching purchase orders:', error);
+      console.error('Error fetching purchase orders:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
       // Fallback to mock data with updated statuses
       setPurchaseOrders([
         {
@@ -72,7 +84,7 @@ export default function PurchaseOrdersPage() {
           total_amount: 890.50,
           invoice_date: '2024-01-14',
           due_date: '2024-02-14',
-          status: 'approved',
+          status: 'paid',
           notes: 'Raw materials for production',
           created_at: '2024-01-14T14:20:00Z',
           updated_at: '2024-01-14T14:20:00Z',
@@ -86,33 +98,22 @@ export default function PurchaseOrdersPage() {
     }
   };
 
-  const approvePurchaseOrder = async (id: string) => {
+  const markAsPaid = async (id: string) => {
     if (role !== 'admin') return;
     try {
       const { error } = await supabase
-        .from('purchase_orders')
+        .from('purchase_invoices')
         .update({
-          status: 'approved',
-          approved_by: user?.id,
-          approved_at: new Date().toISOString()
+          status: 'paid',
+          paid_at: new Date().toISOString()
         })
         .eq('id', id);
       if (error) throw error;
       fetchPurchaseOrders(); // Refresh list
     } catch (error) {
-      console.error('Error approving:', error);
+      console.error('Error marking as paid:', error);
     }
   };
-
-  // In the render, for each pending order, if role === 'admin', show approve button
-  // For example, in the map of filteredPurchaseOrders, add:
-  // {po.status === 'pending' && role === 'admin' && (
-  //   <button onClick={() => approvePurchaseOrder(po.id)}>Approve</button>
-  // )}
-
-  // Also update getStatusIcon and getStatusColor to include 'approved'
-  // case 'approved': return <CheckCircle className="h-4 w-4" />;
-  // color: 'text-success bg-success/10 border-success/20'
 
   const deletePurchaseOrder = async (purchaseOrderId: string) => {
     if (confirm('Are you sure you want to delete this purchase order?')) {
@@ -137,7 +138,6 @@ export default function PurchaseOrdersPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending': return <Clock className="h-4 w-4" />;
-      case 'approved': return <CheckCircle className="h-4 w-4" />;
       case 'paid': return <CheckCircle className="h-4 w-4" />;
       case 'overdue': return <AlertTriangle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
@@ -147,7 +147,6 @@ export default function PurchaseOrdersPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'text-warning bg-warning/10 border-warning/20';
-      case 'approved': return 'text-success bg-success/10 border-success/20';
       case 'paid': return 'text-success bg-success/10 border-success/20';
       case 'overdue': return 'text-destructive bg-destructive/10 border-destructive/20';
       default: return 'text-muted-foreground bg-muted border-border';
@@ -340,7 +339,7 @@ export default function PurchaseOrdersPage() {
                       </button>
                       {po.status === 'pending' && role === 'admin' && (
                         <button 
-                          onClick={() => approvePurchaseOrder(po.id)}
+                          onClick={() => markAsPaid(po.id)}
                           className="p-1 rounded-md hover:bg-muted transition-colors text-success hover:text-success"
                         >
                           <CheckCircle className="h-4 w-4" />
