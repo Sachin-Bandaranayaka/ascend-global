@@ -63,23 +63,57 @@ export interface UserSession {
 }
 
 export class ActivityLogger {
+  private static logQueue: Array<Omit<ActivityLog, 'id' | 'created_at'>> = [];
+  private static isProcessing = false;
+  private static batchSize = 10;
+  private static flushInterval = 5000; // 5 seconds
+
+  static {
+    // Start the background processing
+    this.startBackgroundProcessing();
+  }
+
   static async logActivity(activity: Omit<ActivityLog, 'id' | 'created_at'>) {
+    // Add to queue for async processing
+    this.logQueue.push(activity);
+    
+    // If queue is getting large, process immediately
+    if (this.logQueue.length >= this.batchSize) {
+      this.processQueue();
+    }
+  }
+
+  private static startBackgroundProcessing() {
+    setInterval(() => {
+      if (this.logQueue.length > 0) {
+        this.processQueue();
+      }
+    }, this.flushInterval);
+  }
+
+  private static async processQueue() {
+    if (this.isProcessing || this.logQueue.length === 0) {
+      return;
+    }
+
+    this.isProcessing = true;
+    
     try {
-      const { data, error } = await supabase
+      const batch = this.logQueue.splice(0, this.batchSize);
+      
+      const { error } = await supabase
         .from('activity_logs')
-        .insert([activity])
-        .select()
-        .single();
+        .insert(batch);
 
       if (error) {
-        console.error('Error logging activity:', error);
-        return null;
+        console.error('Error logging activities batch:', error);
+        // Re-add failed items to queue for retry
+        this.logQueue.unshift(...batch);
       }
-
-      return data;
     } catch (error) {
-      console.error('Error logging activity:', error);
-      return null;
+      console.error('Error processing activity log queue:', error);
+    } finally {
+      this.isProcessing = false;
     }
   }
 
